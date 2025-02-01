@@ -5,39 +5,32 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
-
-  const LUMA_API_KEY = process.env.LUMA_API_KEY;
-  if (!LUMA_API_KEY) {
-    return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
+  const { videoUrl } = req.body;
+  const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
+  const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
+  
+  if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
+    return res.status(500).json({ error: 'Missing MUX credentials' });
   }
 
   try {
-    // Generate first image
-    const firstImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
+    const muxResponse = await fetch('https://api.mux.com/video/v1/assets', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: firstImagePrompt })
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`).toString('base64')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ input: videoUrl, playback_policy: ['public'] })
     });
-    const firstImageData = await firstImageResponse.json();
-    if (!firstImageData.job_id) throw new Error('Failed to create first image');
+    const muxData = await muxResponse.json();
+    
+    if (!muxData.data || !muxData.data.playback_ids) {
+      throw new Error('Failed to upload video');
+    }
 
-    // Generate last image
-    const lastImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: lastImagePrompt })
-    });
-    const lastImageData = await lastImageResponse.json();
-    if (!lastImageData.job_id) throw new Error('Failed to create last image');
-
-    res.status(200).json({
-      firstImageJobId: firstImageData.job_id,
-      lastImageJobId: lastImageData.job_id,
-      videoPrompt
-    });
+    res.status(200).json({ playbackId: muxData.data.playback_ids[0].id });
   } catch (error) {
-    console.error('Error generating media:', error);
+    console.error('Error uploading video to Mux:', error);
     res.status(500).json({ error: error.message });
   }
 }
