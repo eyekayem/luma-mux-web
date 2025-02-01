@@ -1,63 +1,43 @@
-// /pages/api/status.js
-
-import { fetchLumaJobStatus } from "../../utils/luma";
-import { uploadToMux } from "../../utils/mux";
+import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
+
+  const LUMA_API_KEY = process.env.LUMA_API_KEY;
+  if (!LUMA_API_KEY) {
+    return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
 
   try {
-    const { firstImageJobId, lastImageJobId, videoJobId, videoPrompt } = req.query;
+    // Generate first image
+    const firstImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: firstImagePrompt })
+    });
+    const firstImageData = await firstImageResponse.json();
+    if (!firstImageData.job_id) throw new Error('Failed to create first image');
 
-    if (!firstImageJobId || !lastImageJobId) {
-      return res.status(400).json({ error: "Missing required job IDs" });
-    }
+    // Generate last image
+    const lastImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: lastImagePrompt })
+    });
+    const lastImageData = await lastImageResponse.json();
+    if (!lastImageData.job_id) throw new Error('Failed to create last image');
 
-    console.log("Checking Luma job statuses...");
-    
-    const firstImageStatus = await fetchLumaJobStatus(firstImageJobId);
-    const lastImageStatus = await fetchLumaJobStatus(lastImageJobId);
-
-    if (!firstImageStatus || !lastImageStatus) {
-      return res.status(500).json({ error: "Failed to fetch Luma job status" });
-    }
-
-    if (firstImageStatus.status !== "completed" || lastImageStatus.status !== "completed") {
-      return res.json({ status: "image_processing" });
-    }
-
-    const firstImage = firstImageStatus.result.image_url;
-    const lastImage = lastImageStatus.result.image_url;
-
-    let video = null;
-    
-    if (videoJobId) {
-      const videoStatus = await fetchLumaJobStatus(videoJobId);
-
-      if (!videoStatus) {
-        return res.status(500).json({ error: "Failed to fetch Luma video job status" });
-      }
-
-      if (videoStatus.status === "completed") {
-        video = videoStatus.result.video_url;
-
-        console.log("Uploading to Mux:", video);
-        const muxPlaybackId = await uploadToMux(video);
-
-        if (muxPlaybackId) {
-          video = `https://stream.mux.com/${muxPlaybackId}.m3u8`;
-        }
-      } else {
-        return res.json({ status: "video_processing", firstImage, lastImage });
-      }
-    }
-
-    return res.json({ status: "completed", firstImage, lastImage, video });
-
+    res.status(200).json({
+      firstImageJobId: firstImageData.job_id,
+      lastImageJobId: lastImageData.job_id,
+      videoPrompt
+    });
   } catch (error) {
-    console.error("Error in status API:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error generating media:', error);
+    res.status(500).json({ error: error.message });
   }
 }
