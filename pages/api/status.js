@@ -1,43 +1,37 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
-
+  const { firstImageJobId, lastImageJobId } = req.query;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
   if (!LUMA_API_KEY) {
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
 
   try {
-    // Generate first image
-    const firstImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: firstImagePrompt })
+    // Poll first image status
+    const firstImageResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/jobs/${firstImageJobId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
     });
     const firstImageData = await firstImageResponse.json();
-    if (!firstImageData.job_id) throw new Error('Failed to create first image');
 
-    // Generate last image
-    const lastImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: lastImagePrompt })
+    // Poll last image status
+    const lastImageResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/jobs/${lastImageJobId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
     });
     const lastImageData = await lastImageResponse.json();
-    if (!lastImageData.job_id) throw new Error('Failed to create last image');
 
     res.status(200).json({
-      firstImageJobId: firstImageData.job_id,
-      lastImageJobId: lastImageData.job_id,
-      videoPrompt
+      firstImage: firstImageData.output_url,
+      lastImage: lastImageData.output_url
     });
   } catch (error) {
-    console.error('Error generating media:', error);
+    console.error('Error fetching Luma job status:', error);
     res.status(500).json({ error: error.message });
   }
 }
