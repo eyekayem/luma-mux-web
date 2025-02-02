@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 export default function PollImages({ firstImageJobId, lastImageJobId, videoPrompt, onVideoJobCreated }) {
   const [firstImage, setFirstImage] = useState(null);
   const [lastImage, setLastImage] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [videoJobId, setVideoJobId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!firstImageJobId || !lastImageJobId) return;
@@ -28,10 +28,10 @@ export default function PollImages({ firstImageJobId, lastImageJobId, videoPromp
           return;
         }
 
-        // 🛠 **Trigger Video Generation when BOTH images are ready**
+        // 🔥 **Trigger Video Generation as soon as both images exist**
         if (firstImage && lastImage && !videoJobId) {
-          console.log("✅ Both images are ready! Starting video generation...");
-          startVideoGeneration();
+          console.log("🎬 ✅ Both images are ready! Starting video generation...");
+          startVideoGeneration(firstImage, lastImage);
           setLoading(false);
         }
       } catch (error) {
@@ -43,14 +43,15 @@ export default function PollImages({ firstImageJobId, lastImageJobId, videoPromp
     return () => clearInterval(interval);
   }, [firstImageJobId, lastImageJobId, firstImage, lastImage, videoJobId]);
 
-  const startVideoGeneration = async () => {
+  const startVideoGeneration = async (image1, image2) => {
     try {
+      console.log(`🎬 Sending Video Generation Request`);
       const response = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstImage,
-          lastImage,
+          firstImage: image1,
+          lastImage: image2,
           videoPrompt
         })
       });
