@@ -15,6 +15,7 @@ export default async function handler(req, res) {
 
   try {
     const checkJobStatus = async (jobId, type) => {
+      if (!jobId) return null;
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
@@ -24,11 +25,16 @@ export default async function handler(req, res) {
       return data;
     };
 
-    const firstImageStatus = firstImageJobId ? await checkJobStatus(firstImageJobId, "First Image") : null;
-    const lastImageStatus = lastImageJobId ? await checkJobStatus(lastImageJobId, "Last Image") : null;
+    const firstImageStatus = await checkJobStatus(firstImageJobId, "First Image");
+    const lastImageStatus = await checkJobStatus(lastImageJobId, "Last Image");
     const videoStatus = videoJobId ? await checkJobStatus(videoJobId, "Video") : null;
 
-    res.status(200).json({ firstImageStatus, lastImageStatus, videoStatus });
+    res.status(200).json({
+      firstImageStatus,
+      lastImageStatus,
+      videoStatus
+    });
+
   } catch (error) {
     console.error('❌ Error checking status:', error);
     res.status(500).json({ error: error.message });
