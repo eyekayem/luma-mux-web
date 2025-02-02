@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import StatusPoller from './StatusPoller';
+import DisplayImages from './DisplayImages';
 
 export default function GenerateMedia() {
   const [firstImageJobId, setFirstImageJobId] = useState(null);
@@ -53,15 +54,7 @@ export default function GenerateMedia() {
         <StatusPoller firstImageJobId={firstImageJobId} lastImageJobId={lastImageJobId} videoJobId={videoJobId} onUpdate={handleUpdate} />
       )}
 
-      {status === 'ready' && (
-        <div>
-          <h3>Generated Media:</h3>
-          <img src={firstImageUrl} alt="First Image" />
-          <img src={lastImageUrl} alt="Last Image" />
-          {videoUrl && <video src={videoUrl} controls />}
-        </div>
-      )}
+      {status === 'ready' && <DisplayImages firstImageUrl={firstImageUrl} lastImageUrl={lastImageUrl} videoUrl={videoUrl} />}
     </div>
   );
 }
-
