@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export default function PollImages({ firstImageJobId, lastImageJobId, onVideoJobCreated }) {
+export default function PollImages({ firstImageJobId, lastImageJobId, videoPrompt, onVideoJobCreated }) {
   const [firstImage, setFirstImage] = useState(null);
   const [lastImage, setLastImage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,12 +14,12 @@ export default function PollImages({ firstImageJobId, lastImageJobId, onVideoJob
         const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
         const data = await response.json();
 
-        if (data.firstImageStatus?.state === "completed" && data.firstImageStatus.assets) {
-          setFirstImage(data.firstImageStatus.assets[0].url);
+        if (data.firstImageStatus?.state === "completed" && data.firstImageStatus.assets?.image) {
+          setFirstImage(data.firstImageStatus.assets.image);
         }
 
-        if (data.lastImageStatus?.state === "completed" && data.lastImageStatus.assets) {
-          setLastImage(data.lastImageStatus.assets[0].url);
+        if (data.lastImageStatus?.state === "completed" && data.lastImageStatus.assets?.image) {
+          setLastImage(data.lastImageStatus.assets.image);
         }
 
         if (data.firstImageStatus?.state === "failed" || data.lastImageStatus?.state === "failed") {
@@ -28,10 +28,11 @@ export default function PollImages({ firstImageJobId, lastImageJobId, onVideoJob
           return;
         }
 
+        // 🛠 **Trigger Video Generation when BOTH images are ready**
         if (firstImage && lastImage && !videoJobId) {
           console.log("✅ Both images are ready! Starting video generation...");
-          setLoading(false);
           startVideoGeneration();
+          setLoading(false);
         }
       } catch (error) {
         console.error("❌ Error polling image status:", error);
@@ -47,7 +48,11 @@ export default function PollImages({ firstImageJobId, lastImageJobId, onVideoJob
       const response = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstImage, lastImage, videoPrompt: "Smooth cinematic transition" })
+        body: JSON.stringify({
+          firstImage,
+          lastImage,
+          videoPrompt
+        })
       });
 
       const data = await response.json();
