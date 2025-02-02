@@ -1,66 +1,25 @@
-import { useState } from "react";
-import PollImages from "../components/PollImages";
+async function checkStatus() {
+  const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
+  const data = await response.json();
 
-export default function Home() {
-  const [firstImageJobId, setFirstImageJobId] = useState(null);
-  const [lastImageJobId, setLastImageJobId] = useState(null);
-  const [videoJobId, setVideoJobId] = useState(null);
-  const [videoPrompt, setVideoPrompt] = useState("");
+  if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
+  if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
 
-  const handleGenerate = async () => {
-    console.log("🎨 Sending request to generate images...");
+  if (data.readyForVideo) {
+    console.log('🎬 Starting video generation...');
+    startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
+  } else {
+    setTimeout(checkStatus, 5000); // Poll every 5s until ready
+  }
+}
 
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstImagePrompt: "A futuristic city skyline",
-        lastImagePrompt: "The same city but in ruins",
-        videoPrompt: "The city collapsing into the sea",
-      }),
-    });
+async function startVideoGeneration(firstImageUrl, lastImageUrl) {
+  const response = await fetch('/api/generate-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
+  });
 
-    const data = await response.json();
-    if (data.firstImageJobId && data.lastImageJobId) {
-      console.log("✅ Image jobs created!", data);
-      setFirstImageJobId(data.firstImageJobId);
-      setLastImageJobId(data.lastImageJobId);
-      setVideoPrompt("The city collapsing into the sea");
-    } else {
-      console.error("❌ Failed to start image jobs", data.error);
-    }
-  };
-
-  const handleVideoStart = async (firstImageUrl, lastImageUrl, videoPrompt) => {
-    console.log("🎬 Starting video generation...");
-
-    const response = await fetch("/api/generate-video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
-    });
-
-    const data = await response.json();
-    if (data.videoJobId) {
-      console.log("✅ Video job created successfully!", data.videoJobId);
-      setVideoJobId(data.videoJobId);
-    } else {
-      console.error("❌ Error starting video job:", data.error);
-    }
-  };
-
-  return (
-    <div>
-      <button onClick={handleGenerate}>Generate Media</button>
-
-      {firstImageJobId && lastImageJobId && (
-        <PollImages
-          firstImageJobId={firstImageJobId}
-          lastImageJobId={lastImageJobId}
-          videoPrompt={videoPrompt}
-          onVideoStart={handleVideoStart}
-        />
-      )}
-    </div>
-  );
+  const data = await response.json();
+  console.log('🎥 Video Generation Response:', data);
 }
