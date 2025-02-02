@@ -5,6 +5,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  console.log('🔄 Checking job status');
+
   const { firstImageJobId, lastImageJobId } = req.query;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
@@ -14,42 +16,35 @@ export default async function handler(req, res) {
   }
 
   try {
-    async function checkJobStatus(jobId) {
+    async function checkJob(jobId) {
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
       });
-
-      const data = await response.json();
-      console.log(`🔄 Status Check for Job ${jobId}:`, data);
-
-      if (data.state === 'failed') {
-        throw new Error(`❌ Luma job ${jobId} failed: ${data.failure_reason}`);
-      }
-
-      return data.state === 'completed' ? data.assets.image : null;
+      return response.json();
     }
 
-    const firstImageUrl = await checkJobStatus(firstImageJobId);
-    const lastImageUrl = await checkJobStatus(lastImageJobId);
+    const firstImageStatus = firstImageJobId ? await checkJob(firstImageJobId) : null;
+    const lastImageStatus = lastImageJobId ? await checkJob(lastImageJobId) : null;
 
-    if (firstImageUrl && lastImageUrl) {
-      console.log('✅ Both images are ready! Proceeding to video generation...');
-      return res.status(200).json({
-        firstImageUrl,
-        lastImageUrl,
-        readyForVideo: true
+    console.log(`📸 First Image Status: ${firstImageStatus?.state}`);
+    console.log(`📸 Last Image Status: ${lastImageStatus?.state}`);
+
+    if (firstImageStatus?.state === 'completed' && lastImageStatus?.state === 'completed') {
+      res.status(200).json({
+        firstImageUrl: firstImageStatus.assets[0].url,
+        lastImageUrl: lastImageStatus.assets[0].url,
+        status: 'ready'
+      });
+    } else {
+      res.status(200).json({
+        status: 'pending',
+        firstImageStatus: firstImageStatus?.state,
+        lastImageStatus: lastImageStatus?.state
       });
     }
-
-    res.status(200).json({
-      firstImageUrl,
-      lastImageUrl,
-      readyForVideo: false
-    });
-
   } catch (error) {
-    console.error('❌ Error checking image status:', error);
+    console.error('❌ Error checking job status:', error);
     res.status(500).json({ error: error.message });
   }
 }
