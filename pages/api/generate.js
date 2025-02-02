@@ -2,7 +2,6 @@ import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    console.log('❌ Invalid request method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -15,66 +14,66 @@ export default async function handler(req, res) {
     console.error('❌ Missing LUMA_API_KEY');
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
-  if (!MUX_ACCESS_TOKEN_ID || !MUX_SECRET_KEY) {
-    console.error('❌ Missing Mux API credentials');
-    return res.status(500).json({ error: 'Missing Mux API credentials' });
-  }
 
-  console.log('🟢 Generating media with prompts:', { firstImagePrompt, lastImagePrompt, videoPrompt });
+  console.log('🟢 Starting media generation process');
 
-  try {
-    async function pollForCompletion(jobId) {
-      const maxAttempts = 30;
-      let attempts = 0;
+  async function pollForCompletion(jobId, type) {
+    const maxAttempts = 30;
+    let attempts = 0;
 
-      while (attempts < maxAttempts) {
-        console.log(`🔄 Polling for job ${jobId} - Attempt ${attempts + 1}`);
-        await new Promise(resolve => setTimeout(resolve, 10000));
+    while (attempts < maxAttempts) {
+      console.log(`🔄 Polling for ${type} completion (Attempt ${attempts + 1})...`);
 
-        const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
-        });
+      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds between polls
 
-        const data = await response.json();
-        console.log(`🟡 Luma API Response (${jobId}):`, data);
+      const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
+      });
 
-        if (data.state === 'completed' && data.assets) {
-          console.log(`✅ Job ${jobId} completed - URL: ${data.assets[0].url}`);
-          return data.assets[0].url;
-        } else if (data.state === 'failed') {
-          throw new Error(`Luma job ${jobId} failed: ${data.failure_reason}`);
-        }
-        attempts++;
+      const data = await response.json();
+
+      if (data.state === 'completed' && data.assets) {
+        console.log(`✅ ${type} job completed: ${data.assets[0].url}`);
+        return data.assets[0].url;
+      } else if (data.state === 'failed') {
+        console.error(`❌ ${type} job failed: ${data.failure_reason}`);
+        throw new Error(`${type} job failed: ${data.failure_reason}`);
       }
-      throw new Error(`Luma job ${jobId} timed out`);
+
+      attempts++;
     }
 
-    console.log('🟢 Requesting first image from Luma...');
+    throw new Error(`${type} job timed out`);
+  }
+
+  try {
+    // 🟢 Step 1: Generate First Image
+    console.log('📸 Creating First Image...');
     const firstImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: firstImagePrompt })
     });
-
     const firstImageData = await firstImageResponse.json();
-    console.log('🟡 First Image Response:', firstImageData);
-    if (!firstImageData.id) throw new Error(`Failed to create first image. Response: ${JSON.stringify(firstImageData)}`);
-    const firstImageUrl = await pollForCompletion(firstImageData.id);
+    if (!firstImageData.id) throw new Error('Failed to create first image');
 
-    console.log('🟢 Requesting last image from Luma...');
+    const firstImageUrl = await pollForCompletion(firstImageData.id, 'First Image');
+
+    // 🟢 Step 2: Generate Last Image
+    console.log('📸 Creating Last Image...');
     const lastImageResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/image', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: lastImagePrompt })
     });
-
     const lastImageData = await lastImageResponse.json();
-    console.log('🟡 Last Image Response:', lastImageData);
-    if (!lastImageData.id) throw new Error(`Failed to create last image. Response: ${JSON.stringify(lastImageData)}`);
-    const lastImageUrl = await pollForCompletion(lastImageData.id);
+    if (!lastImageData.id) throw new Error('Failed to create last image');
 
-    console.log('🟢 Requesting video generation from Luma...');
+    const lastImageUrl = await pollForCompletion(lastImageData.id, 'Last Image');
+
+    // 🟢 Step 3: Generate Video
+    console.log('🎥 Creating Video...');
     const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
@@ -85,18 +84,25 @@ export default async function handler(req, res) {
         model: 'ray-1.6'
       })
     });
-
     const videoData = await videoResponse.json();
-    console.log('🟡 Video Generation Response:', videoData);
-    if (!videoData.id) throw new Error(`Failed to create video. Response: ${JSON.stringify(videoData)}`);
-    const videoUrl = await pollForCompletion(videoData.id);
+    if (!videoData.id) throw new Error('Failed to create video');
+
+    const videoUrl = await pollForCompletion(videoData.id, 'Video');
+
+    // ✅ Step 4: Upload to Mux **Only After Video is Ready**
+    console.log('🟢 All assets are ready! Uploading to Mux...');
+
+    if (!MUX_ACCESS_TOKEN_ID || !MUX_SECRET_KEY) {
+      console.error('❌ Missing Mux API credentials');
+      throw new Error('Missing Mux API credentials');
+    }
 
     const metadataString = `${firstImageUrl}|${lastImageUrl}|${videoUrl}`;
     if (metadataString.length > 256) {
-      throw new Error(`Metadata exceeds 256 character limit: ${metadataString.length} characters`);
+      console.error('❌ Metadata exceeds 256 character limit');
+      throw new Error('Metadata exceeds 256 character limit');
     }
 
-    console.log('🟢 Uploading video to Mux...');
     const muxResponse = await fetch('https://api.mux.com/video/v1/uploads', {
       method: 'POST',
       headers: {
@@ -113,16 +119,17 @@ export default async function handler(req, res) {
     });
 
     const muxData = await muxResponse.json();
-    console.log('🟡 Mux Upload Response:', muxData);
-    if (!muxData.data) throw new Error(`Failed to upload video to Mux. Response: ${JSON.stringify(muxData)}`);
+    if (!muxData.data) throw new Error('Failed to upload video to Mux');
 
-    console.log('✅ Media generation complete! Sending response...');
+    console.log('✅ Mux Upload Complete:', muxData.data.id);
+
     res.status(200).json({
       firstImageUrl,
       lastImageUrl,
       videoUrl,
       muxAssetId: muxData.data.id
     });
+
   } catch (error) {
     console.error('❌ Error generating media:', error);
     res.status(500).json({ error: error.message });
