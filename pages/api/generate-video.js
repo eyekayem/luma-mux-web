@@ -1,77 +1,47 @@
-import { useState, useEffect } from "react";
+import fetch from 'node-fetch';
 
-export default function PollImages({ firstImageJobId, lastImageJobId, videoPrompt, onVideoJobCreated }) {
-  const [firstImage, setFirstImage] = useState(null);
-  const [lastImage, setLastImage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [videoJobId, setVideoJobId] = useState(null);
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-  useEffect(() => {
-    if (!firstImageJobId || !lastImageJobId) return;
+  console.log('🎬 Starting Video Generation...');
 
-    const pollStatus = async () => {
-      try {
-        const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
-        const data = await response.json();
+  const { firstImage, lastImage, videoPrompt } = req.body;
+  const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
-        if (data.firstImageStatus?.state === "completed" && data.firstImageStatus.assets?.image) {
-          setFirstImage(data.firstImageStatus.assets.image);
-        }
+  if (!LUMA_API_KEY) {
+    console.error('❌ Missing Luma API Key');
+    return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
+  }
 
-        if (data.lastImageStatus?.state === "completed" && data.lastImageStatus.assets?.image) {
-          setLastImage(data.lastImageStatus.assets.image);
-        }
+  if (!firstImage || !lastImage) {
+    console.error("❌ Missing Image URLs for Video Generation");
+    return res.status(400).json({ error: "Missing Image URLs" });
+  }
 
-        if (data.firstImageStatus?.state === "failed" || data.lastImageStatus?.state === "failed") {
-          console.error("❌ Image generation failed.");
-          setLoading(false);
-          return;
-        }
+  try {
+    console.log(`🎬 Sending request with:\n - First Image: ${firstImage}\n - Last Image: ${lastImage}\n - Prompt: ${videoPrompt}`);
 
-        // 🛠 **Trigger Video Generation when BOTH images are ready**
-        if (firstImage && lastImage && !videoJobId) {
-          console.log("✅ Both images are ready! Starting video generation...");
-          startVideoGeneration();
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("❌ Error polling image status:", error);
-      }
-    };
+    const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: videoPrompt,
+        image_start: firstImage,
+        image_end: lastImage,
+        model: "ray-1.6"
+      })
+    });
 
-    const interval = setInterval(pollStatus, 5000);
-    return () => clearInterval(interval);
-  }, [firstImageJobId, lastImageJobId, firstImage, lastImage, videoJobId]);
+    const videoData = await videoResponse.json();
+    if (!videoData.id) throw new Error('❌ Failed to create video');
 
-  const startVideoGeneration = async () => {
-    try {
-      const response = await fetch('/api/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstImage,
-          lastImage,
-          videoPrompt
-        })
-      });
+    console.log(`✅ Video Job Created: ${videoData.id}`);
+    res.status(200).json({ videoJobId: videoData.id });
 
-      const data = await response.json();
-      if (data.videoJobId) {
-        console.log(`🎬 Video Job Created: ${data.videoJobId}`);
-        setVideoJobId(data.videoJobId);
-        onVideoJobCreated(data.videoJobId);
-      }
-    } catch (error) {
-      console.error("❌ Error starting video generation:", error);
-    }
-  };
-
-  return (
-    <div>
-      {loading && <p>⏳ Waiting for images...</p>}
-      {firstImage && <img src={firstImage} alt="First Image" width={400} />}
-      {lastImage && <img src={lastImage} alt="Last Image" width={400} />}
-      {videoJobId && <p>🎬 Video is being generated...</p>}
-    </div>
-  );
+  } catch (error) {
+    console.error('❌ Error generating video:', error);
+    res.status(500).json({ error: error.message });
+  }
 }
