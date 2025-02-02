@@ -12,13 +12,11 @@ export default async function handler(req, res) {
   const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
   const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
 
-
-
   if (!LUMA_API_KEY) {
     console.error('❌ Missing Luma API Key');
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
-  if (!MUX_ACCESS_TOKEN_ID || !MUX_SECRET_KEY) {
+  if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
     console.error('❌ Missing Mux API credentials');
     return res.status(500).json({ error: 'Missing Mux API credentials' });
   }
