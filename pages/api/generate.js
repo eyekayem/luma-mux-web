@@ -9,8 +9,10 @@ export default async function handler(req, res) {
 
   const { firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
-  const MUX_ACCESS_TOKEN_ID = process.env.MUX_ACCESS_TOKEN_ID;
-  const MUX_SECRET_KEY = process.env.MUX_SECRET_KEY;
+  const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
+  const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
+
+
 
   if (!LUMA_API_KEY) {
     console.error('❌ Missing Luma API Key');
@@ -87,7 +89,7 @@ export default async function handler(req, res) {
     const muxResponse = await fetch('https://api.mux.com/video/v1/uploads', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${Buffer.from(`${MUX_ACCESS_TOKEN_ID}:${MUX_SECRET_KEY}`).toString('base64')}`,
+        'Authorization': `Basic ${Buffer.from(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`).toString('base64')}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
