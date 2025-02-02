@@ -1,28 +1,31 @@
-// /utils/mux.js
+import fetch from 'node-fetch';
 
-import Mux from "@mux/mux-node";
+const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
+const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
 
-const { MUX_ACCESS_TOKEN, MUX_SECRET_KEY } = process.env;
-
-if (!MUX_ACCESS_TOKEN || !MUX_SECRET_KEY) {
-  throw new Error("Mux API credentials are missing. Check your environment variables.");
+if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
+  console.error('❌ Missing Mux API credentials');
+  throw new Error('Missing Mux API credentials');
 }
 
-const mux = new Mux(MUX_ACCESS_TOKEN, MUX_SECRET_KEY);
-const { Video } = mux;
-
 export async function uploadToMux(videoUrl) {
-  try {
-    const asset = await Video.Assets.create({
+  console.log('🚀 Uploading to Mux...');
+  
+  const response = await fetch('https://api.mux.com/video/v1/assets', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`).toString('base64')}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
       input: videoUrl,
-      playback_policy: ["public"],
-      encoding_tier: "baseline",
-    });
+      playback_policy: ['public'],
+      mp4_support: 'standard'
+    })
+  });
 
-    console.log("Mux upload successful, Playback ID:", asset.playback_ids[0]?.id);
-    return asset.playback_ids[0]?.id; // Return playback ID for streaming
-  } catch (error) {
-    console.error("Error uploading video to Mux:", error);
-    return null;
-  }
+  const data = await response.json();
+  if (!data.data || !data.data.playback_ids) throw new Error('❌ Failed to upload to Mux');
+
+  return data.data.playback_ids[0].id;
 }
