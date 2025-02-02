@@ -1,41 +1,77 @@
-import fetch from 'node-fetch';
+import { useState, useEffect } from "react";
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default function PollImages({ firstImageJobId, lastImageJobId, videoPrompt, onVideoJobCreated }) {
+  const [firstImage, setFirstImage] = useState(null);
+  const [lastImage, setLastImage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [videoJobId, setVideoJobId] = useState(null);
 
-  console.log('🎬 Starting Video Generation...');
+  useEffect(() => {
+    if (!firstImageJobId || !lastImageJobId) return;
 
-  const { firstImage, lastImage, videoPrompt } = req.body;
-  const LUMA_API_KEY = process.env.LUMA_API_KEY;
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
+        const data = await response.json();
 
-  if (!LUMA_API_KEY) {
-    console.error('❌ Missing Luma API Key');
-    return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
-  }
+        if (data.firstImageStatus?.state === "completed" && data.firstImageStatus.assets?.image) {
+          setFirstImage(data.firstImageStatus.assets.image);
+        }
 
-  try {
-    console.log('📽️ Sending video generation request...');
-    const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: videoPrompt,
-        image_start: firstImage,
-        image_end: lastImage,
-        model: "ray-1.6"
-      })
-    });
+        if (data.lastImageStatus?.state === "completed" && data.lastImageStatus.assets?.image) {
+          setLastImage(data.lastImageStatus.assets.image);
+        }
 
-    const videoData = await videoResponse.json();
-    if (!videoData.id) throw new Error('❌ Failed to create video');
+        if (data.firstImageStatus?.state === "failed" || data.lastImageStatus?.state === "failed") {
+          console.error("❌ Image generation failed.");
+          setLoading(false);
+          return;
+        }
 
-    console.log(`✅ Video Job Created: ${videoData.id}`);
-    res.status(200).json({ videoJobId: videoData.id });
+        // 🛠 **Trigger Video Generation when BOTH images are ready**
+        if (firstImage && lastImage && !videoJobId) {
+          console.log("✅ Both images are ready! Starting video generation...");
+          startVideoGeneration();
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("❌ Error polling image status:", error);
+      }
+    };
 
-  } catch (error) {
-    console.error('❌ Error generating video:', error);
-    res.status(500).json({ error: error.message });
-  }
+    const interval = setInterval(pollStatus, 5000);
+    return () => clearInterval(interval);
+  }, [firstImageJobId, lastImageJobId, firstImage, lastImage, videoJobId]);
+
+  const startVideoGeneration = async () => {
+    try {
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstImage,
+          lastImage,
+          videoPrompt
+        })
+      });
+
+      const data = await response.json();
+      if (data.videoJobId) {
+        console.log(`🎬 Video Job Created: ${data.videoJobId}`);
+        setVideoJobId(data.videoJobId);
+        onVideoJobCreated(data.videoJobId);
+      }
+    } catch (error) {
+      console.error("❌ Error starting video generation:", error);
+    }
+  };
+
+  return (
+    <div>
+      {loading && <p>⏳ Waiting for images...</p>}
+      {firstImage && <img src={firstImage} alt="First Image" width={400} />}
+      {lastImage && <img src={lastImage} alt="Last Image" width={400} />}
+      {videoJobId && <p>🎬 Video is being generated...</p>}
+    </div>
+  );
 }
