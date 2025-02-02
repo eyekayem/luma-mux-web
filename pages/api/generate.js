@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     while (attempts < maxAttempts) {
       console.log(`🔄 Polling for ${type} completion (Attempt ${attempts + 1})...`);
 
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds between polls
+      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
 
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
@@ -32,8 +32,9 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
+      console.log(`📩 ${type} API Response:`, JSON.stringify(data, null, 2));
 
-      if (data.state === 'completed' && data.assets) {
+      if (data.state === 'completed' && data.assets && data.assets.length > 0) {
         console.log(`✅ ${type} job completed: ${data.assets[0].url}`);
         return data.assets[0].url;
       } else if (data.state === 'failed') {
@@ -55,8 +56,11 @@ export default async function handler(req, res) {
       headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: firstImagePrompt })
     });
+
     const firstImageData = await firstImageResponse.json();
-    if (!firstImageData.id) throw new Error('Failed to create first image');
+    console.log('📩 First Image API Response:', JSON.stringify(firstImageData, null, 2));
+
+    if (!firstImageData.id) throw new Error('❌ Failed to create first image');
 
     const firstImageUrl = await pollForCompletion(firstImageData.id, 'First Image');
 
@@ -67,8 +71,11 @@ export default async function handler(req, res) {
       headers: { 'Authorization': `Bearer ${LUMA_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: lastImagePrompt })
     });
+
     const lastImageData = await lastImageResponse.json();
-    if (!lastImageData.id) throw new Error('Failed to create last image');
+    console.log('📩 Last Image API Response:', JSON.stringify(lastImageData, null, 2));
+
+    if (!lastImageData.id) throw new Error('❌ Failed to create last image');
 
     const lastImageUrl = await pollForCompletion(lastImageData.id, 'Last Image');
 
@@ -84,8 +91,11 @@ export default async function handler(req, res) {
         model: 'ray-1.6'
       })
     });
+
     const videoData = await videoResponse.json();
-    if (!videoData.id) throw new Error('Failed to create video');
+    console.log('📩 Video API Response:', JSON.stringify(videoData, null, 2));
+
+    if (!videoData.id) throw new Error('❌ Failed to create video');
 
     const videoUrl = await pollForCompletion(videoData.id, 'Video');
 
@@ -119,9 +129,9 @@ export default async function handler(req, res) {
     });
 
     const muxData = await muxResponse.json();
-    if (!muxData.data) throw new Error('Failed to upload video to Mux');
+    console.log('✅ Mux Upload Complete:', JSON.stringify(muxData, null, 2));
 
-    console.log('✅ Mux Upload Complete:', muxData.data.id);
+    if (!muxData.data) throw new Error('Failed to upload video to Mux');
 
     res.status(200).json({
       firstImageUrl,
