@@ -1,25 +1,72 @@
-async function checkStatus() {
-  const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
-  const data = await response.json();
+import { useState } from 'react';
 
-  if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
-  if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
+export default function Home() {
+  const [firstImageUrl, setFirstImageUrl] = useState(null);
+  const [lastImageUrl, setLastImageUrl] = useState(null);
+  const [videoPrompt, setVideoPrompt] = useState('');
+  const [firstImageJobId, setFirstImageJobId] = useState('');
+  const [lastImageJobId, setLastImageJobId] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  if (data.readyForVideo) {
-    console.log('🎬 Starting video generation...');
-    startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
-  } else {
-    setTimeout(checkStatus, 5000); // Poll every 5s until ready
+  async function checkStatus() {
+    if (!firstImageJobId || !lastImageJobId) return;
+
+    const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
+    const data = await response.json();
+
+    if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
+    if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
+
+    if (data.readyForVideo) {
+      console.log('🎬 Starting video generation...');
+      startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
+    } else {
+      setTimeout(checkStatus, 5000); // Poll every 5s until ready
+    }
   }
-}
 
-async function startVideoGeneration(firstImageUrl, lastImageUrl) {
-  const response = await fetch('/api/generate-video', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
-  });
+  async function startVideoGeneration(firstImageUrl, lastImageUrl) {
+    const response = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
+    });
 
-  const data = await response.json();
-  console.log('🎥 Video Generation Response:', data);
+    const data = await response.json();
+    console.log('🎥 Video Generation Response:', data);
+  }
+
+  async function generateImages() {
+    setIsGenerating(true);
+
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstImagePrompt: 'A futuristic city skyline',
+        lastImagePrompt: 'The same city but in ruins',
+      }),
+    });
+
+    const data = await response.json();
+    console.log('📸 Image Generation Response:', data);
+
+    if (data.firstImageJobId && data.lastImageJobId) {
+      setFirstImageJobId(data.firstImageJobId);
+      setLastImageJobId(data.lastImageJobId);
+      checkStatus();
+    }
+  }
+
+  return (
+    <div style={{ textAlign: 'center', marginTop: '20px' }}>
+      <h1>AI Media Generator</h1>
+      <button onClick={generateImages} disabled={isGenerating}>
+        {isGenerating ? 'Generating...' : 'Generate Media'}
+      </button>
+
+      {firstImageUrl && <div><h2>First Image:</h2><img src={firstImageUrl} alt="First Image" width="300" /></div>}
+      {lastImageUrl && <div><h2>Last Image:</h2><img src={lastImageUrl} alt="Last Image" width="300" /></div>}
+    </div>
+  );
 }
