@@ -123,9 +123,28 @@ export default function Home() {
     if (data.playbackId) {
       console.log("✅ Video successfully uploaded to Mux:", data.playbackId);
       setMuxPlaybackId(data.playbackId);
+    } else if (data.muxAssetId) {
+      console.log("⏳ Mux processing started. Polling for readiness...");
+      pollMuxStatus(data.muxAssetId); // ✅ Start polling if asset is still processing
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
     }
+  }
+  async function pollMuxStatus(assetId) {
+    console.log('🔄 Polling Mux for video readiness...');
+  
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/upload?assetId=${assetId}`); // Using /api/upload since that's your endpoint
+      const data = await response.json();
+  
+      console.log("📊 Mux Status Update:", data);
+  
+      if (data.status === "ready") {
+        clearInterval(pollInterval); // Stop polling when ready
+        console.log("✅ Mux Video Ready! Playback ID:", data.playbackId);
+        setMuxPlaybackId(data.playbackId);
+      }
+    }, 5000); // Poll every 5 seconds
   }
 
   return (
