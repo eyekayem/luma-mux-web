@@ -2,60 +2,51 @@ import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    console.error("❌ Method Not Allowed: Only GET requests are accepted.");
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { firstImageJobId, lastImageJobId } = req.query;
+  const { firstImageJobId, lastImageJobId, videoJobId } = req.query;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
   if (!LUMA_API_KEY) {
-    console.error('❌ Missing Luma API Key');
+    console.error("❌ Missing Luma API Key.");
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
 
   try {
-    async function checkJobStatus(jobId, label) {
-      if (!jobId) {
-        console.error(`❌ Missing ${label} Job ID`);
-        return null;
-      }
+    async function checkJobStatus(jobId, type) {
+      if (!jobId) return null;
 
-      console.log(`🔄 Checking status for ${label} Image (Job ID: ${jobId})...`);
-
+      console.log(`🔄 Checking ${type} Job Status: ${jobId}...`);
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
       });
 
-      if (!response.ok) {
-        console.error(`❌ API Error for ${label} Image: ${response.status} ${response.statusText}`);
-        return null;
-      }
-
       const data = await response.json();
-      console.log(`🔍 Response for ${label} Image:`, JSON.stringify(data, null, 2));
+      console.log(`📊 ${type} Status Response:`, data);
 
       if (data.state === 'failed') {
-        console.error(`❌ Luma job ${jobId} failed: ${data.failure_reason}`);
-        return null;
+        throw new Error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
       }
 
-      // Ensure assets exist before accessing image URL
-      return data.state === 'completed' && data.assets?.image ? data.assets.image : null;
+      return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
-    const firstImageUrl = await checkJobStatus(firstImageJobId, "First");
-    const lastImageUrl = await checkJobStatus(lastImageJobId, "Last");
+    const firstImageUrl = await checkJobStatus(firstImageJobId, "First Image");
+    const lastImageUrl = await checkJobStatus(lastImageJobId, "Last Image");
+    const videoUrl = videoJobId ? await checkJobStatus(videoJobId, "Video") : null;
 
-    if (firstImageUrl && lastImageUrl) {
-      console.log('✅ Both images are ready! Proceeding to video generation...');
-      res.status(200).json({ firstImageUrl, lastImageUrl, readyForVideo: true });
-    } else {
-      console.log('⏳ Waiting for images to complete...');
-      res.status(200).json({ firstImageUrl, lastImageUrl, readyForVideo: false });
-    }
+    const readyForVideo = !!(firstImageUrl && lastImageUrl);
+    const readyForMux = !!videoUrl;
+
+    console.log("📊 Status Update:", { firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
+
+    res.status(200).json({ firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
+
   } catch (error) {
-    console.error('❌ Error checking job status:', error);
+    console.error("❌ Error checking job status:", error);
     res.status(500).json({ error: error.message });
   }
 }
