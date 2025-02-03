@@ -16,7 +16,7 @@
     "autoprefixer": "^10.0.0",
     "lumaai": "^1.0.0",
     "@mux/mux-node": "^4.0.0",
-    "@mux/mux-player-react": "^1.0.0",
+    "@mux/mux-player-react": "^1.15.0",
     "next-video": "latest"
   },
   "devDependencies": {
