@@ -24,25 +24,30 @@ export default async function handler(req, res) {
 
   try {
     console.log("🎥 Sending request to Luma API...");
+    
+    const requestBody = {
+      prompt: videoPrompt || "A smooth cinematic transition",
+      image_start: firstImageUrl.trim(),  // Ensure no spaces
+      image_end: lastImageUrl.trim(),  // Ensure no spaces
+      model: 'ray-1.6'
+    };
+
+    console.log("📦 Request Payload:", JSON.stringify(requestBody, null, 2));
+
     const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LUMA_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        prompt: videoPrompt || "A cinematic transition",
-        image_start: firstImageUrl,
-        image_end: lastImageUrl,
-        model: 'ray-1.6'
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const videoData = await videoResponse.json();
     console.log("📽 Luma API Response:", videoData);
 
     if (!videoData.id) {
-      throw new Error("❌ Failed to create video");
+      throw new Error(`❌ Failed to create video. Response: ${JSON.stringify(videoData)}`);
     }
 
     res.status(200).json({ videoJobId: videoData.id });
