@@ -1,4 +1,4 @@
-import { uploadToMux } from '../utils/mux';
+import { uploadToMux } from '../../utils/mux';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
