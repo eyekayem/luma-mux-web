@@ -34,24 +34,31 @@ export default function Home() {
     }
   }
 
-  async function pollForImages(firstJobId, lastJobId) {
-    console.log('🔄 Polling for image completion...');
-    
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
-      const data = await response.json();
-      console.log('📊 Status Update:', data);
+async function pollForImages(firstJobId, lastJobId) {
+  console.log('🔄 Polling for image completion...');
 
-      if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
-      if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+    const data = await response.json();
+    console.log("📊 Status Update:", data);
 
-      if (data.readyForVideo) {
-        clearInterval(pollInterval); // Stop polling for images
-        console.log('🎬 Images ready, starting video generation...');
-        startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
-      }
-    }, 5000); // Poll every 5 seconds
-  }
+    if (data.firstImageUrl) {
+      console.log("✅ First Image Ready:", data.firstImageUrl);
+      setFirstImageUrl(data.firstImageUrl);
+    }
+    if (data.lastImageUrl) {
+      console.log("✅ Last Image Ready:", data.lastImageUrl);
+      setLastImageUrl(data.lastImageUrl);
+    }
+
+    if (data.readyForVideo) {
+      clearInterval(pollInterval);
+      console.log('🎬 Images ready, starting video generation...');
+      startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
+    }
+  }, 5000);
+}
+
 
 async function startVideoGeneration(firstImageUrl, lastImageUrl) {
   console.log("🎬 Preparing to start video generation...");
