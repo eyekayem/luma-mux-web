@@ -29,10 +29,7 @@ export default async function handler(req, res) {
       }
     );
     const firstImageData = await firstImageResponse.json();
-
-    if (!firstImageData.id) {
-      throw new Error('❌ Failed to create first image');
-    }
+    if (!firstImageData.id) throw new Error('❌ Failed to create first image');
 
     console.log('📸 Creating Last Image...');
     const lastImageResponse = await fetch(
@@ -47,20 +44,19 @@ export default async function handler(req, res) {
       }
     );
     const lastImageData = await lastImageResponse.json();
-
-    if (!lastImageData.id) {
-      throw new Error('❌ Failed to create last image');
-    }
+    if (!lastImageData.id) throw new Error('❌ Failed to create last image');
 
     console.log("✅ Job IDs created:", { 
       firstImageJobId: firstImageData.id, 
       lastImageJobId: lastImageData.id 
     });
 
+    // Return job IDs, polling will happen on the frontend
     res.status(200).json({
       firstImageJobId: firstImageData.id,
       lastImageJobId: lastImageData.id
     });
+
   } catch (error) {
     console.error('❌ Error generating media:', error);
     res.status(500).json({ error: error.message });
