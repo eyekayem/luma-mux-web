@@ -100,6 +100,10 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl) {
       if (data.videoUrl) {
         clearInterval(pollInterval); // Stop polling for video
         console.log('✅ Video ready:', data.videoUrl);
+      
+        // 🚀 Start Mux upload after video is ready
+        startMuxUpload(data.videoUrl);
+        
       }
     }, 5000); // Poll every 5 seconds
   }
