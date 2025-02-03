@@ -134,18 +134,23 @@ export default function Home() {
     console.log('🔄 Polling Mux for video readiness...');
   
     const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/upload?assetId=${assetId}`); // Using /api/upload since that's your endpoint
+      const response = await fetch(`/api/upload?assetId=${assetId}`);
       const data = await response.json();
   
       console.log("📊 Mux Status Update:", data);
   
-      if (data.status === "ready") {
+      if (data.status === "ready" && data.playbackId) {
         clearInterval(pollInterval); // Stop polling when ready
         console.log("✅ Mux Video Ready! Playback ID:", data.playbackId);
-        setMuxPlaybackId(data.playbackId);
+  
+        // Delay setting playbackId by 5 sec to ensure Mux is fully ready
+        setTimeout(() => {
+          setMuxPlaybackId(data.playbackId);
+        }, 5000);
       }
     }, 5000); // Poll every 5 seconds
   }
+
 
   return (
     <div>
