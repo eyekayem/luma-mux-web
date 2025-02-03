@@ -53,25 +53,35 @@ export default function Home() {
     }, 5000); // Poll every 5 seconds
   }
 
-  async function startVideoGeneration(firstImageUrl, lastImageUrl) {
-    console.log('🎬 Sending request to generate video...');
+async function startVideoGeneration(firstImageUrl, lastImageUrl) {
+  console.log("🎬 Preparing to start video generation...");
+  console.log("✅ First Image URL:", firstImageUrl);
+  console.log("✅ Last Image URL:", lastImageUrl);
 
-    const response = await fetch('/api/generate-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
-    });
-
-    const data = await response.json();
-    if (data.videoJobId) {
-      console.log('🎥 Video job created:', data.videoJobId);
-      setVideoJobId(data.videoJobId);
-      pollForVideo(data.videoJobId);
-    } else {
-      console.error('❌ Error creating video:', data.error);
-      setIsGenerating(false);
-    }
+  if (!firstImageUrl || !lastImageUrl) {
+    console.error("❌ Missing Image URLs for Video Generation");
+    return;
   }
+
+  const response = await fetch('/api/generate-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
+  });
+
+  const data = await response.json();
+  console.log("🎥 Video Generation Response:", data);
+
+  if (data.videoJobId) {
+    console.log("🎥 Video job created:", data.videoJobId);
+    setVideoJobId(data.videoJobId);
+    pollForVideo(data.videoJobId);
+  } else {
+    console.error("❌ Error creating video:", data.error);
+    setIsGenerating(false);
+  }
+}
+
 
   async function pollForVideo(videoJobId) {
     console.log('🔄 Polling for video completion...');
