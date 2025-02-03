@@ -66,21 +66,21 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl) {
   console.log("✅ Last Image URL:", lastImageUrl);
 
   if (!firstImageUrl || !lastImageUrl) {
-    console.error("❌ Missing Image URLs for Video Generation");
+    console.error("❌ Image URLs are missing before sending request.");
     return;
   }
 
   const response = await fetch('/api/generate-video', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
+    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt: "A smooth cinematic transition" })
   });
 
   const data = await response.json();
   console.log("🎥 Video Generation Response:", data);
 
   if (data.videoJobId) {
-    console.log("🎥 Video job created:", data.videoJobId);
+    console.log("🎬 Video job created successfully:", data.videoJobId);
     setVideoJobId(data.videoJobId);
     pollForVideo(data.videoJobId);
   } else {
@@ -88,7 +88,6 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl) {
     setIsGenerating(false);
   }
 }
-
 
   async function pollForVideo(videoJobId) {
     console.log('🔄 Polling for video completion...');
