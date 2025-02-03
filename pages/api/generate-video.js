@@ -2,14 +2,11 @@ import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    console.error("❌ Method Not Allowed: Only POST requests are accepted.");
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { firstImageUrl, lastImageUrl, videoPrompt } = req.body;
-  console.log("🎬 Received request for video generation.");
-  console.log("🔍 First Image URL:", firstImageUrl);
-  console.log("🔍 Last Image URL:", lastImageUrl);
-  console.log("🔍 Video Prompt:", videoPrompt);
 
   if (!firstImageUrl || !lastImageUrl) {
     console.error("❌ Missing Image URLs for Video Generation.");
@@ -23,13 +20,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🎥 Sending request to Luma API...");
-    
+    console.log("🎥 Sending request to Luma API for video generation...");
+    console.log("📤 First Image URL:", firstImageUrl);
+    console.log("📤 Last Image URL:", lastImageUrl);
+    console.log("📤 Video Prompt:", videoPrompt);
+
     const requestBody = {
+      generation_type: "video",
       prompt: videoPrompt || "A smooth cinematic transition",
-      image_start: firstImageUrl.trim(),  // Ensure no spaces
-      image_end: lastImageUrl.trim(),  // Ensure no spaces
-      model: 'ray-1.6'
+      image_start: firstImageUrl.trim(),
+      image_end: lastImageUrl.trim(),
+      model: "ray-1.6"
     };
 
     console.log("📦 Request Payload:", JSON.stringify(requestBody, null, 2));
@@ -47,9 +48,11 @@ export default async function handler(req, res) {
     console.log("📽 Luma API Response:", videoData);
 
     if (!videoData.id) {
-      throw new Error(`❌ Failed to create video. Response: ${JSON.stringify(videoData)}`);
+      console.error("❌ Failed to create video:", videoData);
+      return res.status(500).json({ error: 'Failed to create video', details: videoData });
     }
 
+    console.log("✅ Video Job ID:", videoData.id);
     res.status(200).json({ videoJobId: videoData.id });
 
   } catch (error) {
