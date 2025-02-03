@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import VideoPlayer from './components/VideoPlayer';
+import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
