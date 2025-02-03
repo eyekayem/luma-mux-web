@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import VideoPlayer from './components/VideoPlayer';
 
 export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
@@ -7,6 +8,7 @@ export default function Home() {
   const [firstImageJobId, setFirstImageJobId] = useState('');
   const [lastImageJobId, setLastImageJobId] = useState('');
   const [videoJobId, setVideoJobId] = useState('');
+  const [muxPlaybackId, setMuxPlaybackId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function generateMedia() {
@@ -34,60 +36,59 @@ export default function Home() {
     }
   }
 
-async function pollForImages(firstJobId, lastJobId) {
-  console.log('🔄 Polling for image completion...');
+  async function pollForImages(firstJobId, lastJobId) {
+    console.log('🔄 Polling for image completion...');
 
-  const pollInterval = setInterval(async () => {
-    const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+      const data = await response.json();
+      console.log("📊 Status Update:", data);
+
+      if (data.firstImageUrl) {
+        console.log("✅ First Image Ready:", data.firstImageUrl);
+        setFirstImageUrl(data.firstImageUrl);
+      }
+      if (data.lastImageUrl) {
+        console.log("✅ Last Image Ready:", data.lastImageUrl);
+        setLastImageUrl(data.lastImageUrl);
+      }
+
+      if (data.readyForVideo) {
+        clearInterval(pollInterval);
+        console.log('🎬 Images ready, starting video generation...');
+        startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
+      }
+    }, 5000);
+  }
+
+  async function startVideoGeneration(firstImageUrl, lastImageUrl) {
+    console.log("🎬 Preparing to start video generation...");
+    console.log("✅ First Image URL:", firstImageUrl);
+    console.log("✅ Last Image URL:", lastImageUrl);
+
+    if (!firstImageUrl || !lastImageUrl) {
+      console.error("❌ Image URLs are missing before sending request.");
+      return;
+    }
+
+    const response = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt: "A smooth cinematic transition" })
+    });
+
     const data = await response.json();
-    console.log("📊 Status Update:", data);
+    console.log("🎥 Video Generation Response:", data);
 
-    if (data.firstImageUrl) {
-      console.log("✅ First Image Ready:", data.firstImageUrl);
-      setFirstImageUrl(data.firstImageUrl);
+    if (data.videoJobId) {
+      console.log("🎬 Video job created successfully:", data.videoJobId);
+      setVideoJobId(data.videoJobId);
+      pollForVideo(data.videoJobId);
+    } else {
+      console.error("❌ Error creating video:", data.error);
+      setIsGenerating(false);
     }
-    if (data.lastImageUrl) {
-      console.log("✅ Last Image Ready:", data.lastImageUrl);
-      setLastImageUrl(data.lastImageUrl);
-    }
-
-    if (data.readyForVideo) {
-      clearInterval(pollInterval);
-      console.log('🎬 Images ready, starting video generation...');
-      startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
-    }
-  }, 5000);
-}
-
-
-async function startVideoGeneration(firstImageUrl, lastImageUrl) {
-  console.log("🎬 Preparing to start video generation...");
-  console.log("✅ First Image URL:", firstImageUrl);
-  console.log("✅ Last Image URL:", lastImageUrl);
-
-  if (!firstImageUrl || !lastImageUrl) {
-    console.error("❌ Image URLs are missing before sending request.");
-    return;
   }
-
-  const response = await fetch('/api/generate-video', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt: "A smooth cinematic transition" })
-  });
-
-  const data = await response.json();
-  console.log("🎥 Video Generation Response:", data);
-
-  if (data.videoJobId) {
-    console.log("🎬 Video job created successfully:", data.videoJobId);
-    setVideoJobId(data.videoJobId);
-    pollForVideo(data.videoJobId);
-  } else {
-    console.error("❌ Error creating video:", data.error);
-    setIsGenerating(false);
-  }
-}
 
   async function pollForVideo(videoJobId) {
     console.log('🔄 Polling for video completion...');
@@ -98,44 +99,50 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl) {
       console.log('📊 Video Status Update:', data);
 
       if (data.videoUrl) {
-        clearInterval(pollInterval); // Stop polling for video
+        clearInterval(pollInterval);
         console.log('✅ Video ready:', data.videoUrl);
-      
+
         // 🚀 Start Mux upload after video is ready
         startMuxUpload(data.videoUrl);
-        
       }
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
   }
 
-async function startMuxUpload(videoUrl) {
-  console.log("🚀 Uploading video to Mux:", videoUrl);
+  async function startMuxUpload(videoUrl) {
+    console.log("🚀 Uploading video to Mux:", videoUrl);
 
-  const response = await fetch('/api/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ videoUrl })
-  });
+    const response = await fetch('/api/mux', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl })
+    });
 
-  const data = await response.json();
-  console.log("📡 Mux Upload Response:", data);
+    const data = await response.json();
+    console.log("📡 Mux Upload Response:", data);
 
-  if (data.muxAssetId) {
-    console.log("✅ Video successfully uploaded to Mux:", data.muxAssetId);
-  } else {
-    console.error("❌ Error uploading video to Mux:", data.error);
+    if (data.playbackId) {
+      console.log("✅ Video successfully uploaded to Mux:", data.playbackId);
+      setMuxPlaybackId(data.playbackId);
+    } else {
+      console.error("❌ Error uploading video to Mux:", data.error);
+    }
   }
-}
-
 
   return (
     <div>
-      <h1>AI Media Generator</h1>
+      <h1>kinoprompt.bklt.al</h1>
       <button onClick={generateMedia} disabled={isGenerating}>
         {isGenerating ? 'Generating...' : 'Generate Media'}
       </button>
+
       {firstImageUrl && <img src={firstImageUrl} alt="First Image" />}
       {lastImageUrl && <img src={lastImageUrl} alt="Last Image" />}
+
+      {muxPlaybackId ? (
+        <VideoPlayer playbackId={muxPlaybackId} />
+      ) : (
+        <p>No video available</p>
+      )}
     </div>
   );
 }
