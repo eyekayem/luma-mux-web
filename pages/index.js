@@ -104,6 +104,26 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl) {
     }, 5000); // Poll every 5 seconds
   }
 
+async function startMuxUpload(videoUrl) {
+  console.log("🚀 Uploading video to Mux:", videoUrl);
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoUrl })
+  });
+
+  const data = await response.json();
+  console.log("📡 Mux Upload Response:", data);
+
+  if (data.muxAssetId) {
+    console.log("✅ Video successfully uploaded to Mux:", data.muxAssetId);
+  } else {
+    console.error("❌ Error uploading video to Mux:", data.error);
+  }
+}
+
+
   return (
     <div>
       <h1>AI Media Generator</h1>
