@@ -8,11 +8,14 @@ export default function Home() {
   const [lastImageJobId, setLastImageJobId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  async function checkStatus() {
-    if (!firstImageJobId || !lastImageJobId) return;
+async function checkStatus(firstImageJobId, lastImageJobId) {
+  console.log("🔄 Initiating Status Check...");
 
+  try {
     const response = await fetch(`/api/status?firstImageJobId=${firstImageJobId}&lastImageJobId=${lastImageJobId}`);
     const data = await response.json();
+
+    console.log("📡 Status Response:", data); // Log API response
 
     if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
     if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
@@ -21,9 +24,13 @@ export default function Home() {
       console.log('🎬 Starting video generation...');
       startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
     } else {
-      setTimeout(checkStatus, 5000); // Poll every 5s until ready
+      console.log('⏳ Images still processing... Polling again in 5s');
+      setTimeout(() => checkStatus(firstImageJobId, lastImageJobId), 5000);
     }
+  } catch (error) {
+    console.error("❌ Error polling status:", error);
   }
+}
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl) {
     const response = await fetch('/api/generate-video', {
