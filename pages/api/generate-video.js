@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🎥 Sending request to Luma API for video generation...");
+    console.log("🎬 Preparing to start video generation...");
     console.log("📤 First Image URL:", firstImageUrl);
     console.log("📤 Last Image URL:", lastImageUrl);
     console.log("📤 Video Prompt:", videoPrompt);
@@ -28,14 +28,21 @@ export default async function handler(req, res) {
     const requestBody = {
       generation_type: "video",
       prompt: videoPrompt || "A smooth cinematic transition",
-      image_start: firstImageUrl.trim(),
-      image_end: lastImageUrl.trim(),
-      model: "ray-1.6"
+      keyframes: {
+        frame0: {
+          type: "image",
+          url: firstImageUrl.trim()
+        },
+        frame1: {
+          type: "image",
+          url: lastImageUrl.trim()
+        }
+      }
     };
 
     console.log("📦 Request Payload:", JSON.stringify(requestBody, null, 2));
 
-    const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video', {
+    const videoResponse = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LUMA_API_KEY}`,
