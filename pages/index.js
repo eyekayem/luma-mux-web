@@ -111,7 +111,7 @@ export default function Home() {
   async function startMuxUpload(videoUrl) {
     console.log("🚀 Uploading video to Mux:", videoUrl);
 
-    const response = await fetch('/api/mux', {
+    const response = await fetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoUrl })
