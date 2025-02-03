@@ -10,7 +10,7 @@ if (!MUX_TOKEN_ID || !MUX_TOKEN_SECRET) {
 
 export async function uploadToMux(videoUrl) {
   console.log('🚀 Uploading to Mux...');
-  
+
   const response = await fetch('https://api.mux.com/video/v1/assets', {
     method: 'POST',
     headers: {
@@ -19,13 +19,17 @@ export async function uploadToMux(videoUrl) {
     },
     body: JSON.stringify({
       input: videoUrl,
-      playback_policy: ['public'],
+      playback_policy: ['public'], // Ensure public playback ID is included
       mp4_support: 'standard'
     })
   });
 
   const data = await response.json();
-  if (!data.data || !data.data.playback_ids) throw new Error('❌ Failed to upload to Mux');
+  
+  if (!data.data || !data.data.playback_ids || !data.data.playback_ids[0].id) {
+    console.error('❌ Failed to upload to Mux:', data);
+    throw new Error('Mux API did not return a playback ID');
+  }
 
   return data.data.playback_ids[0].id;
 }
