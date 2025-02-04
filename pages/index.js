@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-  const [firstImagePrompt, setFirstImagePrompt] = useState('');
-  const [lastImagePrompt, setLastImagePrompt] = useState('');
-  const [videoPrompt, setVideoPrompt] = useState('');
+  const [firstImagePrompt, setFirstImagePrompt] = useState('A fashion show for clowns, on the runway. Everyone in the audience is not a clown.');
+  const [lastImagePrompt, setLastImagePrompt] = useState('Holding a hand mirror up and seeing that you are a clown.');
+  const [videoPrompt, setVideoPrompt] = useState('Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.');
 
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
@@ -12,21 +12,23 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
-  // ✅ Load stored gallery on mount
+  // ✅ Load gallery from backend on mount
   useEffect(() => {
-    const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
-    setGallery(storedGallery);
+    async function fetchGallery() {
+      const response = await fetch('/api/gallery');
+      const data = await response.json();
+      setGallery(data.gallery || []);
+    }
+    fetchGallery();
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('gallery', JSON.stringify(gallery));
-  }, [gallery]);
 
   async function generateMedia() {
     setIsGenerating(true);
     setMuxPlaybackId('waiting');
     setFirstImageUrl(null);
     setLastImageUrl(null);
+
+    console.log('🚀 Generating media...');
 
     const newEntry = {
       firstImagePrompt,
@@ -56,15 +58,21 @@ export default function Home() {
 
   async function pollForImages(firstJobId, lastJobId, galleryEntry) {
     console.log('🔄 Polling for image completion...');
-    
+
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
 
-      if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
-      if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
+      if (data.firstImageUrl) {
+        galleryEntry.firstImageUrl = data.firstImageUrl;
+        setFirstImageUrl(data.firstImageUrl);
+      }
+      if (data.lastImageUrl) {
+        galleryEntry.lastImageUrl = data.lastImageUrl;
+        setLastImageUrl(data.lastImageUrl);
+      }
 
-      setGallery(prevGallery => prevGallery.map(entry => 
+      setGallery(prevGallery => prevGallery.map(entry =>
         entry === galleryEntry ? { ...galleryEntry } : entry
       ));
 
@@ -72,7 +80,7 @@ export default function Home() {
         clearInterval(pollInterval);
         startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
       }
-    }, 3000);
+    }, 2000);
   }
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
@@ -92,6 +100,7 @@ export default function Home() {
       pollForVideo(data.videoJobId, galleryEntry);
     } else {
       console.error("❌ Error creating video:", data.error);
+      setIsGenerating(false);
     }
   }
 
@@ -106,7 +115,7 @@ export default function Home() {
         clearInterval(pollInterval);
         startMuxUpload(data.videoUrl, galleryEntry);
       }
-    }, 3000);
+    }, 2000);
   }
 
   async function startMuxUpload(videoUrl, galleryEntry) {
@@ -115,29 +124,35 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoUrl }),
     });
-  
+
     const data = await response.json();
     if (data.playbackId) {
-      console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
-  
-      // ✅ Delay setting Mux Playback ID to prevent premature errors
-      setTimeout(() => {
-        galleryEntry.muxPlaybackId = data.playbackId;
-        setGallery(prevGallery =>
-          prevGallery.map(entry => entry === galleryEntry ? { ...galleryEntry } : entry)
-        );
-      }, 3000); // Give Mux time to confirm readiness
+      galleryEntry.muxPlaybackId = data.playbackId;
+      setMuxPlaybackId(data.playbackId);
+
+      // ✅ Save new gallery entry to backend
+      await fetch('/api/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(galleryEntry),
+      });
+
+      setGallery(prevGallery => prevGallery.map(entry =>
+        entry === galleryEntry ? { ...galleryEntry } : entry
+      ));
+
+      setIsGenerating(false);
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
+      setIsGenerating(false);
     }
   }
-
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
         <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-center">Magic Cinema Playground</h1>
+          <h1 className="text-3xl font-bold">Kinoprompt.bklt.ai</h1>
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
@@ -152,23 +167,17 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-4 w-full max-w-5xl">
+      <div className="gallery mt-8">
         {gallery.map((entry, index) => (
-        <div key={index} className="gallery-item p-4 border border-gray-700 rounded-lg my-4">
-          <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
-          <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
-          <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
-          <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
-          <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
-      
-          {entry.muxPlaybackId && entry.muxPlaybackId !== 'waiting' ? (
+          <div key={index} className="gallery-item p-4 border border-gray-700 rounded-lg my-4">
+            <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
+            <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
+            <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
+            <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
+            <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
             <VideoPlayer playbackId={entry.muxPlaybackId} />
-          ) : (
-            <p>Waiting for video...</p>
-          )}
-        </div>
-      ))}
-
+          </div>
+        ))}
       </div>
     </div>
   );
