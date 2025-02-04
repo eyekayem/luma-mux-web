@@ -51,15 +51,14 @@ export default function Home() {
 
   // ✅ Save Gallery to Local Storage
   useEffect(() => {
-    console.log("💾 checking gallery for changes, if changed save to local storage...");
+    console.log("💾 Checking if gallery changed before saving...");
     const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
-    
-    // ✅ Only update if the gallery actually changed
-    if (JSON.stringify(storedGallery) !== JSON.stringify(gallery)) {
+  
+    if (JSON.stringify(storedGallery) !== JSON.stringify(gallery) && gallery.length > 0) {
+      console.log("✅ Gallery updated, saving to local storage.");
       localStorage.setItem('gallery', JSON.stringify(gallery));
     }
-  }, [gallery]);
-
+  }, [gallery]); 
 
   // ✅ Save Work Panel State
   useEffect(() => {
