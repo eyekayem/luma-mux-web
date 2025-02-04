@@ -2,9 +2,12 @@ import { useState } from "react";
 import VideoPlayer from "../components/VideoPlayer";
 
 export default function Home() {
+  const [firstImagePrompt, setFirstImagePrompt] = useState("A futuristic city skyline");
+  const [lastImagePrompt, setLastImagePrompt] = useState("The same city but in ruins");
+  const [videoPrompt, setVideoPrompt] = useState("A smooth cinematic transition");
+  
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [videoPrompt, setVideoPrompt] = useState("");
   const [firstImageJobId, setFirstImageJobId] = useState("");
   const [lastImageJobId, setLastImageJobId] = useState("");
   const [videoJobId, setVideoJobId] = useState("");
@@ -18,10 +21,7 @@ export default function Home() {
     const response = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstImagePrompt: "A futuristic city skyline",
-        lastImagePrompt: "The same city but in ruins",
-      }),
+      body: JSON.stringify({ firstImagePrompt, lastImagePrompt }),
     });
 
     const data = await response.json();
@@ -65,9 +65,7 @@ export default function Home() {
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl) {
     console.log("🎬 Preparing to start video generation...");
-    console.log("✅ First Image URL:", firstImageUrl);
-    console.log("✅ Last Image URL:", lastImageUrl);
-
+    
     if (!firstImageUrl || !lastImageUrl) {
       console.error("❌ Image URLs are missing before sending request.");
       return;
@@ -76,11 +74,7 @@ export default function Home() {
     const response = await fetch("/api/generate-video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstImageUrl,
-        lastImageUrl,
-        videoPrompt: "A smooth cinematic transition",
-      }),
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
     });
 
     const data = await response.json();
@@ -107,8 +101,6 @@ export default function Home() {
       if (data.videoUrl) {
         clearInterval(pollInterval);
         console.log("✅ Video ready:", data.videoUrl);
-
-        // 🚀 Start Mux upload after video is ready
         startMuxUpload(data.videoUrl);
       }
     }, 5000);
@@ -131,7 +123,7 @@ export default function Home() {
       setMuxPlaybackId(data.playbackId);
     } else if (data.muxAssetId) {
       console.log("⏳ Mux processing started. Polling for readiness...");
-      pollMuxStatus(data.muxAssetId); // ✅ Start polling if asset is still processing
+      pollMuxStatus(data.muxAssetId);
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
     }
@@ -147,40 +139,44 @@ export default function Home() {
       console.log("📊 Mux Status Update:", data);
 
       if (data.status === "ready" && data.playbackId) {
-        clearInterval(pollInterval); // Stop polling when ready
+        clearInterval(pollInterval);
         console.log("✅ Mux Video Ready! Playback ID:", data.playbackId);
-
-        // Delay setting playbackId by 2.5 sec to ensure Mux is fully ready
-        setTimeout(() => {
-          setMuxPlaybackId(data.playbackId);
-        }, 2500);
+        setTimeout(() => setMuxPlaybackId(data.playbackId), 2500);
       }
-    }, 1000); // Poll every second
+    }, 1000);
   }
 
   return (
     <div className="container">
       <h1>kinoprompt.bklt.al</h1>
 
-      <div className="input-section">
+      <div className="form">
+        <textarea
+          value={firstImagePrompt}
+          onChange={(e) => setFirstImagePrompt(e.target.value)}
+          placeholder="First Frame Description"
+        />
+        <textarea
+          value={lastImagePrompt}
+          onChange={(e) => setLastImagePrompt(e.target.value)}
+          placeholder="Last Frame Description"
+        />
+        <textarea
+          value={videoPrompt}
+          onChange={(e) => setVideoPrompt(e.target.value)}
+          placeholder="Camera Move / Shot Action"
+        />
         <button onClick={generateMedia} disabled={isGenerating}>
           {isGenerating ? "Generating..." : "Generate Media"}
         </button>
       </div>
 
       <div className="media-grid">
-        {firstImageUrl && (
-          <img src={firstImageUrl} alt="First Image" className="image-preview" />
-        )}
-        {lastImageUrl && (
-          <img src={lastImageUrl} alt="Last Image" className="image-preview" />
-        )}
-        {muxPlaybackId ? (
-          <VideoPlayer playbackId={muxPlaybackId} />
-        ) : (
-          <p>No video available</p>
-        )}
+        {firstImageUrl && <img src={firstImageUrl} className="image-preview" />}
+        {lastImageUrl && <img src={lastImageUrl} className="image-preview" />}
       </div>
+
+      {muxPlaybackId && <VideoPlayer playbackId={muxPlaybackId} className="video-container" />}
 
       <style jsx>{`
         .container {
@@ -190,19 +186,37 @@ export default function Home() {
           color: white;
           font-family: Arial, sans-serif;
         }
-        .input-section {
+        .form {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
           margin-bottom: 20px;
         }
+        textarea {
+          width: 80%;
+          height: 60px;
+          padding: 10px;
+          border-radius: 8px;
+          border: none;
+          font-size: 16px;
+          background: #222;
+          color: white;
+        }
         .media-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          display: flex;
+          justify-content: center;
           gap: 10px;
           max-width: 800px;
           margin: auto;
         }
         .image-preview {
-          width: 100%;
+          width: 48%;
           border-radius: 8px;
+        }
+        .video-container {
+          width: 100%;
+          margin-top: 20px;
         }
       `}</style>
     </div>
