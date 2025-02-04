@@ -128,11 +128,19 @@ export default function Home() {
   }
 
   return (
-    <div>
-      <h1>kinoprompt.bklt.al</h1>
-      <button onClick={generateMedia} disabled={isGenerating}>
-        {isGenerating ? 'Generating...' : 'Generate Media'}
-      </button>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
+      <h1 className="text-4xl font-bold mb-6">kinoprompt.bklt.al</h1>
+    
+      <div className="w-full max-w-xl space-y-4">
+        <textarea className="input" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
+        <textarea className="input" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
+        <textarea className="input" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
+        <button className="button w-full" onClick={generateMedia} disabled={isGenerating}>
+          {isGenerating ? "Generating..." : "Generate Media"}
+        </button>
+      </div>
+    </div>
+
       {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>No video available</p>}
       <div className="gallery">
         {gallery.map((entry, index) => (
