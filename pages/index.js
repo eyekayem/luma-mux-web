@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-  const [firstImagePrompt, setFirstImagePrompt] = useState('A fashion show for clowns, on the runway. Everyone in the audience is not a clown.');
-  const [lastImagePrompt, setLastImagePrompt] = useState('Holding a hand mirror up and seeing that you are a clown.');
-  const [videoPrompt, setVideoPrompt] = useState('Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.');
+  const [firstImagePrompt, setFirstImagePrompt] = useState('');
+  const [lastImagePrompt, setLastImagePrompt] = useState('');
+  const [videoPrompt, setVideoPrompt] = useState('');
 
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState('waiting');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
+  // ✅ Load stored gallery on mount
   useEffect(() => {
     const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
     setGallery(storedGallery);
@@ -21,7 +23,7 @@ export default function Home() {
   }, [gallery]);
 
   async function generateMedia() {
-    console.log('🚀 Generating media...');
+    setIsGenerating(true);
     setMuxPlaybackId('waiting');
     setFirstImageUrl(null);
     setLastImageUrl(null);
@@ -48,19 +50,20 @@ export default function Home() {
       pollForImages(data.firstImageJobId, data.lastImageJobId, newEntry);
     } else {
       console.error('❌ Error generating images:', data.error);
+      setIsGenerating(false);
     }
   }
 
   async function pollForImages(firstJobId, lastJobId, galleryEntry) {
     console.log('🔄 Polling for image completion...');
-
+    
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
 
       if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
       if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
-      
+
       setGallery(prevGallery => prevGallery.map(entry => 
         entry === galleryEntry ? { ...galleryEntry } : entry
       ));
@@ -69,7 +72,7 @@ export default function Home() {
         clearInterval(pollInterval);
         startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
       }
-    }, 2000);
+    }, 3000);
   }
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
@@ -103,7 +106,7 @@ export default function Home() {
         clearInterval(pollInterval);
         startMuxUpload(data.videoUrl, galleryEntry);
       }
-    }, 2000);
+    }, 3000);
   }
 
   async function startMuxUpload(videoUrl, galleryEntry) {
@@ -119,8 +122,10 @@ export default function Home() {
       setGallery(prevGallery => prevGallery.map(entry => 
         entry === galleryEntry ? { ...galleryEntry } : entry
       ));
+      setIsGenerating(false);
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
+      setIsGenerating(false);
     }
   }
 
@@ -132,13 +137,28 @@ export default function Home() {
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia}>Generate</button>
+          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia} disabled={isGenerating}>
+            {isGenerating ? "Generating..." : "Generate"}
+          </button>
         </div>
         <div className="grid grid-cols-1 gap-4">
           <img src={firstImageUrl || 'https://via.placeholder.com/300x200?text=First+Image'} className="w-full rounded-lg" alt="First Image" />
           <img src={lastImageUrl || 'https://via.placeholder.com/300x200?text=Last+Image'} className="w-full rounded-lg" alt="Last Image" />
           {muxPlaybackId !== 'waiting' ? <VideoPlayer playbackId={muxPlaybackId} className="w-full" /> : <p>Waiting for video...</p>}
         </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-3 gap-4 w-full max-w-5xl">
+        {gallery.map((entry, index) => (
+          <div key={index} className="bg-gray-800 p-4 rounded-lg">
+            <p className="text-sm">{entry.firstImagePrompt}</p>
+            <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
+            <p className="text-sm">{entry.lastImagePrompt}</p>
+            <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
+            <p className="text-sm">{entry.videoPrompt}</p>
+            {entry.muxPlaybackId !== 'waiting' ? <VideoPlayer playbackId={entry.muxPlaybackId} /> : <p>Waiting for video...</p>}
+          </div>
+        ))}
       </div>
     </div>
   );
