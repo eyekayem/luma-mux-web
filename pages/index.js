@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
@@ -14,15 +14,24 @@ export default function Home() {
 
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [firstImageJobId, setFirstImageJobId] = useState('');
-  const [lastImageJobId, setLastImageJobId] = useState('');
-  const [videoJobId, setVideoJobId] = useState('');
   const [muxPlaybackId, setMuxPlaybackId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
+  // Load gallery from localStorage on mount
+  useEffect(() => {
+    const storedGallery = localStorage.getItem("gallery");
+    if (storedGallery) {
+      setGallery(JSON.parse(storedGallery));
+    }
+  }, []);
+
   async function generateMedia() {
     setIsGenerating(true);
+    setMuxPlaybackId(""); // Reset video player
+    setFirstImageUrl(null); // Reset images
+    setLastImageUrl(null);
+
     console.log('🚀 Sending request to generate images...');
 
     const response = await fetch('/api/generate', {
@@ -34,8 +43,6 @@ export default function Home() {
     const data = await response.json();
     if (data.firstImageJobId && data.lastImageJobId) {
       console.log('✅ Image jobs created:', data);
-      setFirstImageJobId(data.firstImageJobId);
-      setLastImageJobId(data.lastImageJobId);
       pollForImages(data.firstImageJobId, data.lastImageJobId);
     } else {
       console.error('❌ Error creating images:', data.error);
@@ -47,17 +54,15 @@ export default function Home() {
     console.log('🔄 Polling for image completion...');
 
     const pollInterval = setInterval(async () => {
-      const response = await fetch(
-        `/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`
-      );
+      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
       console.log("📊 Status Update:", data);
 
-      if (data.firstImageUrl) {
+      if (data.firstImageUrl && !firstImageUrl) {
         console.log("✅ First Image Ready:", data.firstImageUrl);
         setFirstImageUrl(data.firstImageUrl);
       }
-      if (data.lastImageUrl) {
+      if (data.lastImageUrl && !lastImageUrl) {
         console.log("✅ Last Image Ready:", data.lastImageUrl);
         setLastImageUrl(data.lastImageUrl);
       }
@@ -67,11 +72,11 @@ export default function Home() {
         console.log('🎬 Images ready, starting video generation...');
         startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
       }
-    }, 5000);
+    }, 2000);
   }
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl) {
-    console.log("🎬 Preparing to start video generation...");
+    console.log("🎬 Starting video generation...");
 
     if (!firstImageUrl || !lastImageUrl) {
       console.error("❌ Image URLs are missing before sending request.");
@@ -88,8 +93,6 @@ export default function Home() {
     console.log("🎥 Video Generation Response:", data);
 
     if (data.videoJobId) {
-      console.log("🎬 Video job created successfully:", data.videoJobId);
-      setVideoJobId(data.videoJobId);
       pollForVideo(data.videoJobId);
     } else {
       console.error("❌ Error creating video:", data.error);
@@ -108,10 +111,9 @@ export default function Home() {
       if (data.videoUrl) {
         clearInterval(pollInterval);
         console.log('✅ Video ready:', data.videoUrl);
-
         startMuxUpload(data.videoUrl);
       }
-    }, 5000);
+    }, 2000);
   }
 
   async function startMuxUpload(videoUrl) {
@@ -130,18 +132,15 @@ export default function Home() {
       console.log("✅ Video successfully uploaded to Mux:", data.playbackId);
       setMuxPlaybackId(data.playbackId);
 
-      // ✅ Update gallery & reset generation status
-      setGallery((prevGallery) => [
-        {
-          firstImagePrompt,
-          firstImageUrl,
-          lastImagePrompt,
-          lastImageUrl,
-          videoPrompt,
-          muxPlaybackId: data.playbackId,
-        },
-        ...prevGallery,
-      ]);
+      // ✅ Update gallery and save to localStorage
+      setGallery((prevGallery) => {
+        const updatedGallery = [
+          { firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId: data.playbackId },
+          ...prevGallery,
+        ];
+        localStorage.setItem("gallery", JSON.stringify(updatedGallery)); // Save to localStorage
+        return updatedGallery;
+      });
 
       setIsGenerating(false);
     } else {
@@ -155,32 +154,28 @@ export default function Home() {
       <h1 className="text-4xl font-bold mb-6">kinoprompt.bklt.al</h1>
 
       <div className="w-full max-w-xl space-y-4">
-        <textarea
-          className="input"
-          value={firstImagePrompt}
-          onChange={(e) => setFirstImagePrompt(e.target.value)}
-          placeholder="First Frame Description"
-        />
-        <textarea
-          className="input"
-          value={lastImagePrompt}
-          onChange={(e) => setLastImagePrompt(e.target.value)}
-          placeholder="Last Frame Description"
-        />
-        <textarea
-          className="input"
-          value={videoPrompt}
-          onChange={(e) => setVideoPrompt(e.target.value)}
-          placeholder="Camera Move / Shot Action"
-        />
+        <textarea className="input" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
+        <textarea className="input" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
+        <textarea className="input" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
         <button className="button w-full" onClick={generateMedia} disabled={isGenerating}>
           {isGenerating ? "Generating..." : "Generate Media"}
         </button>
+        <button className="button w-full bg-red-600 mt-2" onClick={() => { localStorage.removeItem("gallery"); setGallery([]); }}>
+          Clear Gallery
+        </button>
       </div>
 
-      {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>No video available</p>}
+      {/* Image Preview */}
+      <div className="flex gap-4 mt-6">
+        {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="rounded-lg w-1/2" />}
+        {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="rounded-lg w-1/2" />}
+      </div>
 
-      <div className="gallery">
+      {/* Video Preview */}
+      {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} className="mt-6" /> : <p className="mt-6">No video available</p>}
+
+      {/* Gallery */}
+      <div className="gallery mt-8">
         {gallery.map((entry, index) => (
           <div key={index} className="gallery-item p-4 border border-gray-700 rounded-lg my-4">
             <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
