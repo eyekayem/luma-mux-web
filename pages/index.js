@@ -102,6 +102,62 @@ export default function Home() {
     }
   }
 
+  // ✅ Polls Luma AI API for image updates and updates work panel & gallery
+async function pollForImages(firstJobId, lastJobId, galleryEntry) {
+  console.log('🔄 Polling for image completion...');
+
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+    const data = await response.json();
+
+    if (data.firstImageUrl) {
+      console.log("✅ First Image Ready:", data.firstImageUrl);
+      galleryEntry.firstImageUrl = data.firstImageUrl;
+      setFirstImageUrl(data.firstImageUrl);
+    }
+    if (data.lastImageUrl) {
+      console.log("✅ Last Image Ready:", data.lastImageUrl);
+      galleryEntry.lastImageUrl = data.lastImageUrl;
+      setLastImageUrl(data.lastImageUrl);
+    }
+
+    setGallery((prevGallery) =>
+      prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
+    );
+
+    // ✅ When both images are ready, trigger video generation
+    if (data.firstImageUrl && data.lastImageUrl) {
+      clearInterval(pollInterval);
+      startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
+    }
+  }, 2000);
+}
+
+// ✅ Starts video generation after both images are ready
+async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
+  console.log("🎬 Starting Video Generation...");
+
+  if (!firstImageUrl || !lastImageUrl) {
+    console.error("❌ Missing image URLs. Video generation aborted.");
+    return;
+  }
+
+  const response = await fetch('/api/generate-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
+  });
+
+  const data = await response.json();
+  if (data.videoJobId) {
+    pollForVideo(data.videoJobId, galleryEntry);
+  } else {
+    console.error("❌ Video generation failed:", data.error);
+    setIsGenerating(false);
+  }
+}
+
+  
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       {/* Work Panel */}
