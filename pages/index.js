@@ -1,55 +1,47 @@
-import { useState } from "react";
-import VideoPlayer from "../components/VideoPlayer";
+import { useState } from 'react';
+import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-const [firstImagePrompt, setFirstImagePrompt] = useState(
-  "A fashion show for clowns, on the runway. Everyone in the audience is not a clown."
-);
-const [lastImagePrompt, setLastImagePrompt] = useState(
-  "Holding a hand mirror up and seeing that you are a clown."
-);
-const [videoPrompt, setVideoPrompt] = useState(
-  "Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown."
-);
-
-  
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [firstImageJobId, setFirstImageJobId] = useState("");
-  const [lastImageJobId, setLastImageJobId] = useState("");
-  const [videoJobId, setVideoJobId] = useState("");
-  const [muxPlaybackId, setMuxPlaybackId] = useState("");
+  const [videoPrompt, setVideoPrompt] = useState('');
+  const [firstImageJobId, setFirstImageJobId] = useState('');
+  const [lastImageJobId, setLastImageJobId] = useState('');
+  const [videoJobId, setVideoJobId] = useState('');
+  const [muxPlaybackId, setMuxPlaybackId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [gallery, setGallery] = useState([]);
 
   async function generateMedia() {
     setIsGenerating(true);
-    console.log("🚀 Sending request to generate images...");
+    console.log('🚀 Sending request to generate images...');
 
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstImagePrompt, lastImagePrompt }),
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        firstImagePrompt: "A fashion show for clowns, on the runway. Everyone in the audience is not a clown.",
+        lastImagePrompt: "Holding a hand mirror up and seeing that you are a clown."
+      })
     });
 
     const data = await response.json();
     if (data.firstImageJobId && data.lastImageJobId) {
-      console.log("✅ Image jobs created:", data);
+      console.log('✅ Image jobs created:', data);
       setFirstImageJobId(data.firstImageJobId);
       setLastImageJobId(data.lastImageJobId);
       pollForImages(data.firstImageJobId, data.lastImageJobId);
     } else {
-      console.error("❌ Error creating images:", data.error);
+      console.error('❌ Error creating images:', data.error);
       setIsGenerating(false);
     }
   }
 
   async function pollForImages(firstJobId, lastJobId) {
-    console.log("🔄 Polling for image completion...");
+    console.log('🔄 Polling for image completion...');
 
     const pollInterval = setInterval(async () => {
-      const response = await fetch(
-        `/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`
-      );
+      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
       console.log("📊 Status Update:", data);
 
@@ -64,7 +56,7 @@ const [videoPrompt, setVideoPrompt] = useState(
 
       if (data.readyForVideo) {
         clearInterval(pollInterval);
-        console.log("🎬 Images ready, starting video generation...");
+        console.log('🎬 Images ready, starting video generation...');
         startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
       }
     }, 5000);
@@ -72,16 +64,18 @@ const [videoPrompt, setVideoPrompt] = useState(
 
   async function startVideoGeneration(firstImageUrl, lastImageUrl) {
     console.log("🎬 Preparing to start video generation...");
-    
+    console.log("✅ First Image URL:", firstImageUrl);
+    console.log("✅ Last Image URL:", lastImageUrl);
+
     if (!firstImageUrl || !lastImageUrl) {
       console.error("❌ Image URLs are missing before sending request.");
       return;
     }
 
-    const response = await fetch("/api/generate-video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
+    const response = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt: "Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown." })
     });
 
     const data = await response.json();
@@ -98,16 +92,17 @@ const [videoPrompt, setVideoPrompt] = useState(
   }
 
   async function pollForVideo(videoJobId) {
-    console.log("🔄 Polling for video completion...");
+    console.log('🔄 Polling for video completion...');
 
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
       const data = await response.json();
-      console.log("📊 Video Status Update:", data);
+      console.log('📊 Video Status Update:', data);
 
       if (data.videoUrl) {
         clearInterval(pollInterval);
-        console.log("✅ Video ready:", data.videoUrl);
+        console.log('✅ Video ready:', data.videoUrl);
+
         startMuxUpload(data.videoUrl);
       }
     }, 5000);
@@ -116,10 +111,10 @@ const [videoPrompt, setVideoPrompt] = useState(
   async function startMuxUpload(videoUrl) {
     console.log("🚀 Uploading video to Mux:", videoUrl);
 
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoUrl }),
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl })
     });
 
     const data = await response.json();
@@ -128,104 +123,30 @@ const [videoPrompt, setVideoPrompt] = useState(
     if (data.playbackId) {
       console.log("✅ Video successfully uploaded to Mux:", data.playbackId);
       setMuxPlaybackId(data.playbackId);
-    } else if (data.muxAssetId) {
-      console.log("⏳ Mux processing started. Polling for readiness...");
-      pollMuxStatus(data.muxAssetId);
-    } else {
-      console.error("❌ Error uploading video to Mux:", data.error);
+      setGallery((prevGallery) => [{ firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId: data.playbackId }, ...prevGallery]);
     }
   }
 
-  async function pollMuxStatus(assetId) {
-    console.log("🔄 Polling Mux for video readiness...");
-
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/upload?assetId=${assetId}`);
-      const data = await response.json();
-
-      console.log("📊 Mux Status Update:", data);
-
-      if (data.status === "ready" && data.playbackId) {
-        clearInterval(pollInterval);
-        console.log("✅ Mux Video Ready! Playback ID:", data.playbackId);
-        setTimeout(() => setMuxPlaybackId(data.playbackId), 2500);
-      }
-    }, 1000);
-  }
-
   return (
-    <div className="container">
+    <div>
       <h1>kinoprompt.bklt.al</h1>
-
-      <div className="form">
-        <textarea
-          value={firstImagePrompt}
-          onChange={(e) => setFirstImagePrompt(e.target.value)}
-          placeholder="First Frame Description"
-        />
-        <textarea
-          value={lastImagePrompt}
-          onChange={(e) => setLastImagePrompt(e.target.value)}
-          placeholder="Last Frame Description"
-        />
-        <textarea
-          value={videoPrompt}
-          onChange={(e) => setVideoPrompt(e.target.value)}
-          placeholder="Camera Move / Shot Action"
-        />
-        <button onClick={generateMedia} disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate Media"}
-        </button>
+      <button onClick={generateMedia} disabled={isGenerating}>
+        {isGenerating ? 'Generating...' : 'Generate Media'}
+      </button>
+      {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>No video available</p>}
+      <div className="gallery">
+        {gallery.map((entry, index) => (
+          <div key={index} className="gallery-item">
+            <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
+            <img src={entry.firstImageUrl} alt="First Image" />
+            <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
+            <img src={entry.lastImageUrl} alt="Last Image" />
+            <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
+            <VideoPlayer playbackId={entry.muxPlaybackId} />
+            <button onClick={() => reloadGeneration(entry)}>Reload</button>
+          </div>
+        ))}
       </div>
-
-      <div className="media-grid">
-        {firstImageUrl && <img src={firstImageUrl} className="image-preview" />}
-        {lastImageUrl && <img src={lastImageUrl} className="image-preview" />}
-      </div>
-
-      {muxPlaybackId && <VideoPlayer playbackId={muxPlaybackId} className="video-container" />}
-
-      <style jsx>{`
-        .container {
-          text-align: center;
-          padding: 20px;
-          background-color: #121212;
-          color: white;
-          font-family: Arial, sans-serif;
-        }
-        .form {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-        textarea {
-          width: 80%;
-          height: 60px;
-          padding: 10px;
-          border-radius: 8px;
-          border: none;
-          font-size: 16px;
-          background: #222;
-          color: white;
-        }
-        .media-grid {
-          display: flex;
-          justify-content: center;
-          gap: 10px;
-          max-width: 800px;
-          margin: auto;
-        }
-        .image-preview {
-          width: 48%;
-          border-radius: 8px;
-        }
-        .video-container {
-          width: 100%;
-          margin-top: 20px;
-        }
-      `}</style>
     </div>
   );
 }
