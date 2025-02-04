@@ -108,35 +108,44 @@ export default function Home() {
   }
 
   // ✅ Polls Luma AI API for image updates and updates work panel & gallery
-async function pollForImages(firstJobId, lastJobId, galleryEntry) {
-  console.log('🔄 Polling for image completion...');
-
-  const pollInterval = setInterval(async () => {
-    const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
-    const data = await response.json();
-
-    if (data.firstImageUrl) {
-      console.log("✅ First Image Ready:", data.firstImageUrl);
-      galleryEntry.firstImageUrl = data.firstImageUrl;
-      setFirstImageUrl(data.firstImageUrl);
-    }
-    if (data.lastImageUrl) {
-      console.log("✅ Last Image Ready:", data.lastImageUrl);
-      galleryEntry.lastImageUrl = data.lastImageUrl;
-      setLastImageUrl(data.lastImageUrl);
-    }
-
-    setGallery((prevGallery) =>
-      prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
-    );
-
-    // ✅ When both images are ready, trigger video generation
-    if (data.firstImageUrl && data.lastImageUrl) {
-      clearInterval(pollInterval);
-      startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
-    }
-  }, 2000);
-}
+  async function pollForImages(firstJobId, lastJobId, galleryEntry) {
+      console.log('🔄 Polling for image completion...');
+  
+      const pollInterval = setInterval(async () => {
+          const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+          const data = await response.json();
+  
+          console.log("📡 Poll Response:", data);
+  
+          let updated = false;
+  
+          if (data.firstImageUrl && galleryEntry.firstImageUrl.includes("Generating")) {
+              console.log("✅ First Image Ready:", data.firstImageUrl);
+              galleryEntry.firstImageUrl = data.firstImageUrl;
+              setFirstImageUrl(data.firstImageUrl);
+              updated = true;
+          }
+          if (data.lastImageUrl && galleryEntry.lastImageUrl.includes("Generating")) {
+              console.log("✅ Last Image Ready:", data.lastImageUrl);
+              galleryEntry.lastImageUrl = data.lastImageUrl;
+              setLastImageUrl(data.lastImageUrl);
+              updated = true;
+          }
+  
+          if (updated) {
+              console.log("🔄 Updating gallery with new images...");
+              setGallery((prevGallery) =>
+                  prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
+              );
+          }
+  
+          if (data.firstImageUrl && data.lastImageUrl) {
+              console.log("✅ Both images ready, stopping polling and starting video generation.");
+              clearInterval(pollInterval);
+              startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
+          }
+      }, 2000);
+  }
 
 // ✅ Starts video generation after both images are ready
 async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
