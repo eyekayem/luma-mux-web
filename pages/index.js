@@ -2,164 +2,76 @@ import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-  const [firstImagePrompt, setFirstImagePrompt] = useState("A fashion show for clowns, on the runway. Everyone in the audience is not a clown.");
-  const [lastImagePrompt, setLastImagePrompt] = useState("Holding a hand mirror up and seeing that you are a clown.");
-  const [videoPrompt, setVideoPrompt] = useState("Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.");
+  const [firstImagePrompt, setFirstImagePrompt] = useState(
+    "A fashion show for clowns, on the runway. Everyone in the audience is not a clown."
+  );
+  const [lastImagePrompt, setLastImagePrompt] = useState(
+    "Holding a hand mirror up and seeing that you are a clown."
+  );
+  const [videoPrompt, setVideoPrompt] = useState(
+    "Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown."
+  );
 
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [muxPlaybackId, setMuxPlaybackId] = useState('');
+  const [muxPlaybackId, setMuxPlaybackId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
-  // ✅ Load gallery from backend on mount
   useEffect(() => {
-    async function fetchGallery() {
-      const response = await fetch('/api/gallery');
-      const data = await response.json();
-      setGallery(data.gallery || []);
-    }
-    fetchGallery();
+    const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
+    setGallery(storedGallery);
   }, []);
 
-  async function generateMedia() {
-    setIsGenerating(true);
-    setMuxPlaybackId(""); 
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
-
-    console.log('🚀 Generating images...');
-
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstImagePrompt, lastImagePrompt }),
-    });
-
-    const data = await response.json();
-    if (data.firstImageJobId && data.lastImageJobId) {
-      pollForImages(data.firstImageJobId, data.lastImageJobId);
-    } else {
-      console.error('❌ Error generating images:', data.error);
-      setIsGenerating(false);
-    }
-  }
-
-  async function pollForImages(firstJobId, lastJobId) {
-    console.log('🔄 Polling for image completion...');
-
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
-      const data = await response.json();
-
-      if (data.firstImageUrl && !firstImageUrl) setFirstImageUrl(data.firstImageUrl);
-      if (data.lastImageUrl && !lastImageUrl) setLastImageUrl(data.lastImageUrl);
-
-      if (data.firstImageUrl && data.lastImageUrl) {
-        clearInterval(pollInterval);
-        startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
-      }
-    }, 2000);
-  }
-
-  async function startVideoGeneration(firstImageUrl, lastImageUrl) {
-    if (!firstImageUrl || !lastImageUrl) {
-      console.error("❌ Missing image URLs.");
-      return;
-    }
-
-    const response = await fetch('/api/generate-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
-    });
-
-    const data = await response.json();
-    if (data.videoJobId) {
-      pollForVideo(data.videoJobId);
-    } else {
-      console.error("❌ Error creating video:", data.error);
-      setIsGenerating(false);
-    }
-  }
-
-  async function pollForVideo(videoJobId) {
-    console.log('🔄 Polling for video completion...');
-
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
-      const data = await response.json();
-
-      if (data.videoUrl) {
-        clearInterval(pollInterval);
-        startMuxUpload(data.videoUrl);
-      }
-    }, 2000);
-  }
-
-  async function startMuxUpload(videoUrl) {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoUrl }),
-    });
-
-    const data = await response.json();
-    if (data.playbackId) {
-      setMuxPlaybackId(data.playbackId);
-
-      // ✅ Save new gallery entry to backend
-      if (firstImageUrl && lastImageUrl) {
-        const newEntry = { firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId: data.playbackId };
-
-        await fetch('/api/gallery', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newEntry),
-        });
-
-        // ✅ Refresh gallery after new entry is added
-        const updatedGallery = await fetch('/api/gallery');
-        const galleryData = await updatedGallery.json();
-        setGallery(galleryData.gallery);
-      }
-
-      setIsGenerating(false);
-    } else {
-      console.error("❌ Error uploading video to Mux:", data.error);
-      setIsGenerating(false);
-    }
+  function updateGallery(entry) {
+    const newGallery = [entry, ...gallery];
+    setGallery(newGallery);
+    localStorage.setItem('gallery', JSON.stringify(newGallery));
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-4xl font-bold mb-6">kinoprompt.bklt.al</h1>
-
+      
+      {/* Working Panel */}
       <div className="w-full max-w-xl space-y-4">
         <textarea className="input" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
         <textarea className="input" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
         <textarea className="input" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-        <button className="button w-full" onClick={generateMedia} disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate Media"}
-        </button>
+        <button className="button w-full" disabled={isGenerating}>{isGenerating ? "Generating..." : "Generate Media"}</button>
       </div>
 
-      <div className="flex gap-4 mt-6">
-        {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="rounded-lg w-1/2" />}
-        {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="rounded-lg w-1/2" />}
+      {/* Placeholder for Working Panel */}
+      <div className="w-full max-w-3xl mt-6">
+        <div className="flex justify-between gap-4">
+          <div className="w-1/2 h-40 bg-gray-700 rounded-lg flex items-center justify-center">
+            {firstImageUrl ? <img src={firstImageUrl} className="w-full rounded-lg" /> : <p>First Image Placeholder</p>}
+          </div>
+          <div className="w-1/2 h-40 bg-gray-700 rounded-lg flex items-center justify-center">
+            {lastImageUrl ? <img src={lastImageUrl} className="w-full rounded-lg" /> : <p>Last Image Placeholder</p>}
+          </div>
+        </div>
+        <div className="mt-4 h-60 bg-gray-800 rounded-lg flex items-center justify-center">
+          {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>Video Placeholder</p>}
+        </div>
       </div>
 
-      {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} className="mt-6" /> : <p className="mt-6">No video available</p>}
-
-      <div className="gallery mt-8">
+      {/* Gallery */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 w-full max-w-5xl">
         {gallery.map((entry, index) => (
-          <div key={index} className="gallery-item p-4 border border-gray-700 rounded-lg my-4">
-            <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
-            <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
-            <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
-            <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
-            <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
-            <VideoPlayer playbackId={entry.muxPlaybackId} />
+          <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 text-center">
+            <p className="text-sm font-bold">First Image Prompt</p>
+            <div className="h-40 bg-gray-700 rounded-lg flex items-center justify-center">
+              {entry.firstImageUrl ? <img src={entry.firstImageUrl} className="w-full rounded-lg" /> : <p>Placeholder</p>}
+            </div>
+            <p className="text-sm font-bold mt-2">Last Image Prompt</p>
+            <div className="h-40 bg-gray-700 rounded-lg flex items-center justify-center">
+              {entry.lastImageUrl ? <img src={entry.lastImageUrl} className="w-full rounded-lg" /> : <p>Placeholder</p>}
+            </div>
+            <p className="text-sm font-bold mt-2">Video</p>
+            <div className="mt-2 h-60 bg-gray-800 rounded-lg flex items-center justify-center">
+              {entry.muxPlaybackId ? <VideoPlayer playbackId={entry.muxPlaybackId} /> : <p>Video Placeholder</p>}
+            </div>
           </div>
         ))}
       </div>
