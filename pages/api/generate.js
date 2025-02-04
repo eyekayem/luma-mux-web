@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   console.log('🟢 Starting media generation process');
 
-  const { firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
+  const { firstImagePrompt, lastImagePrompt } = req.body;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
   if (!LUMA_API_KEY) {
@@ -30,8 +30,13 @@ export default async function handler(req, res) {
         body: JSON.stringify({ prompt: firstImagePrompt })
       }
     );
+    
     const firstImageData = await firstImageResponse.json();
-    if (!firstImageData.id) throw new Error('❌ Failed to create first image');
+    console.log("📝 First Image Response:", firstImageData);
+
+    if (!firstImageData.id) {
+      throw new Error(`❌ Failed to create first image. Luma API Response: ${JSON.stringify(firstImageData)}`);
+    }
 
     console.log('📸 Creating Last Image...');
     const lastImageResponse = await fetch(
@@ -45,8 +50,13 @@ export default async function handler(req, res) {
         body: JSON.stringify({ prompt: lastImagePrompt })
       }
     );
+
     const lastImageData = await lastImageResponse.json();
-    if (!lastImageData.id) throw new Error('❌ Failed to create last image');
+    console.log("📝 Last Image Response:", lastImageData);
+
+    if (!lastImageData.id) {
+      throw new Error(`❌ Failed to create last image. Luma API Response: ${JSON.stringify(lastImageData)}`);
+    }
 
     console.log("✅ Job IDs created:", { 
       firstImageJobId: firstImageData.id, 
@@ -60,7 +70,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Error generating media:', error);
+    console.error('❌ Error generating media:', error.message);
     res.status(500).json({ error: error.message });
   }
 }
