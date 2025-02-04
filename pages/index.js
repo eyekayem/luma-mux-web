@@ -45,9 +45,9 @@ export default function Home() {
 
     const newEntry = {
       firstImagePrompt,
-      firstImageUrl: 'https://via.placeholder.com/300x200?text=Generating+First+Image',
+      firstImageUrl: '',
       lastImagePrompt,
-      lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
+      lastImageUrl: '',
       videoPrompt,
       muxPlaybackId: 'waiting',
     };
@@ -76,8 +76,14 @@ export default function Home() {
       const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
 
-      if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
-      if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
+      if (data.firstImageUrl) {
+        galleryEntry.firstImageUrl = data.firstImageUrl;
+        setFirstImageUrl(data.firstImageUrl);
+      }
+      if (data.lastImageUrl) {
+        galleryEntry.lastImageUrl = data.lastImageUrl;
+        setLastImageUrl(data.lastImageUrl);
+      }
 
       setGallery((prevGallery) =>
         prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
@@ -164,20 +170,6 @@ export default function Home() {
           <img src={lastImageUrl || 'https://via.placeholder.com/300x200?text=Last+Image'} className="w-full rounded-lg" alt="Last Image" />
           {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} className="w-full" /> : <p>Waiting for video...</p>}
         </div>
-      </div>
-
-      {/* Gallery */}
-      <div className="mt-8 w-full max-w-5xl">
-        {gallery.map((entry, index) => (
-          <div key={index} className="bg-gray-800 p-4 rounded-lg my-4">
-            <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
-            <img src={entry.firstImageUrl} alt="First Image" className="w-full" />
-            <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
-            <img src={entry.lastImageUrl} alt="Last Image" className="w-full" />
-            <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
-            {entry.muxPlaybackId ? <VideoPlayer playbackId={entry.muxPlaybackId} /> : <p>Waiting for video...</p>}
-          </div>
-        ))}
       </div>
     </div>
   );
