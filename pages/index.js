@@ -51,9 +51,15 @@ export default function Home() {
 
   // ✅ Save Gallery to Local Storage
   useEffect(() => {
-    console.log("💾 Saving gallery to local storage...");
-    localStorage.setItem('gallery', JSON.stringify(gallery));
+    console.log("💾 checking gallery for changes, if changed save to local storage...");
+    const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
+    
+    // ✅ Only update if the gallery actually changed
+    if (JSON.stringify(storedGallery) !== JSON.stringify(gallery)) {
+      localStorage.setItem('gallery', JSON.stringify(gallery));
+    }
   }, [gallery]);
+
 
   // ✅ Save Work Panel State
   useEffect(() => {
@@ -153,6 +159,53 @@ async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
     pollForVideo(data.videoJobId, galleryEntry);
   } else {
     console.error("❌ Video generation failed:", data.error);
+    setIsGenerating(false);
+  }
+}
+
+// ✅ Polls Mux API until the video is ready
+async function pollForVideo(videoJobId, galleryEntry) {
+  console.log('🔄 Polling for video completion...');
+
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
+    const data = await response.json();
+
+    if (data.videoUrl) {
+      clearInterval(pollInterval);
+      startMuxUpload(data.videoUrl, galleryEntry);
+    }
+  }, 2000);
+}
+
+// ✅ Uploads video to Mux once it's generated
+async function startMuxUpload(videoUrl, galleryEntry) {
+  console.log("🚀 Uploading video to Mux:", videoUrl);
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoUrl }),
+  });
+
+  const data = await response.json();
+  console.log("📡 Mux Upload Response:", data);
+
+  if (data.playbackId) {
+    console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+
+    // ✅ Update the gallery entry with the new Mux playback ID
+    setGallery((prevGallery) =>
+      prevGallery.map((entry) =>
+        entry === galleryEntry ? { ...entry, muxPlaybackId: data.playbackId } : entry
+      )
+    );
+
+    // ✅ Ensure the Work Panel video updates immediately
+    setMuxPlaybackId(data.playbackId);
+    setIsGenerating(false);
+  } else {
+    console.error("❌ Error uploading video to Mux:", data.error);
     setIsGenerating(false);
   }
 }
