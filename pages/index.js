@@ -17,46 +17,26 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
-  // ✅ Load Gallery on Mount
+  // ✅ Load gallery from backend on mount
   useEffect(() => {
     async function fetchGallery() {
       try {
         const response = await fetch('/api/gallery');
         const data = await response.json();
-
-        if (data.gallery && Array.isArray(data.gallery)) {
-          setGallery(data.gallery);
-        } else {
-          setGallery([]);
-        }
+        setGallery(data.gallery || []);
       } catch (error) {
         console.error("❌ Failed to fetch gallery:", error);
         setGallery([]);
       }
     }
-
     fetchGallery();
-
-    const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
-    setFirstImagePrompt(storedWorkPanel.firstImagePrompt);
-    setLastImagePrompt(storedWorkPanel.lastImagePrompt);
-    setVideoPrompt(storedWorkPanel.videoPrompt);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('gallery', JSON.stringify(gallery));
-  }, [gallery]);
-
-  useEffect(() => {
-    localStorage.setItem('workPanel', JSON.stringify({ firstImagePrompt, lastImagePrompt, videoPrompt }));
-  }, [firstImagePrompt, lastImagePrompt, videoPrompt]);
-
-  // ✅ Generate Media
   async function generateMedia() {
     setIsGenerating(true);
     setMuxPlaybackId(null);
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
+    setFirstImageUrl('https://via.placeholder.com/300x200?text=Generating+First+Image');
+    setLastImageUrl('https://via.placeholder.com/300x200?text=Generating+Last+Image');
 
     console.log('🚀 Generating media...');
 
@@ -86,7 +66,6 @@ export default function Home() {
     }
   }
 
-  // ✅ Poll for Images
   async function pollForImages(firstJobId, lastJobId, galleryEntry) {
     console.log('🔄 Polling for image completion...');
 
@@ -114,7 +93,6 @@ export default function Home() {
     }, 2000);
   }
 
-  // ✅ Generate Video
   async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
     if (!firstImageUrl || !lastImageUrl) {
       console.error("❌ Missing image URLs.");
@@ -136,7 +114,6 @@ export default function Home() {
     }
   }
 
-  // ✅ Poll for Video
   async function pollForVideo(videoJobId, galleryEntry) {
     console.log('🔄 Polling for video completion...');
 
@@ -151,7 +128,6 @@ export default function Home() {
     }, 2000);
   }
 
-  // ✅ Upload to Mux
   async function startMuxUpload(videoUrl, galleryEntry) {
     console.log("🚀 Uploading video to Mux:", videoUrl);
 
@@ -162,11 +138,7 @@ export default function Home() {
     });
 
     const data = await response.json();
-    console.log("📡 Mux Upload Response:", data);
-
     if (data.playbackId) {
-      console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
-
       setGallery((prevGallery) =>
         prevGallery.map((entry) =>
           entry === galleryEntry ? { ...entry, muxPlaybackId: data.playbackId } : entry
