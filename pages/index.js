@@ -8,7 +8,7 @@ export default function Home() {
 
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [muxPlaybackId, setMuxPlaybackId] = useState('');
+  const [muxPlaybackId, setMuxPlaybackId] = useState('waiting');
   const [gallery, setGallery] = useState([]);
 
   useEffect(() => {
@@ -22,7 +22,10 @@ export default function Home() {
 
   async function generateMedia() {
     console.log('🚀 Generating media...');
-    
+    setMuxPlaybackId('waiting');
+    setFirstImageUrl(null);
+    setLastImageUrl(null);
+
     const newEntry = {
       firstImagePrompt,
       firstImageUrl: 'https://via.placeholder.com/300x200?text=First+Image',
@@ -32,7 +35,7 @@ export default function Home() {
       muxPlaybackId: 'waiting'
     };
 
-    setGallery([newEntry, ...gallery]);
+    setGallery(prevGallery => [newEntry, ...prevGallery]);
 
     const response = await fetch('/api/generate', {
       method: 'POST',
@@ -57,7 +60,10 @@ export default function Home() {
 
       if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
       if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
-      setGallery([...gallery]);
+      
+      setGallery(prevGallery => prevGallery.map(entry => 
+        entry === galleryEntry ? { ...galleryEntry } : entry
+      ));
 
       if (data.firstImageUrl && data.lastImageUrl) {
         clearInterval(pollInterval);
@@ -110,7 +116,9 @@ export default function Home() {
     const data = await response.json();
     if (data.playbackId) {
       galleryEntry.muxPlaybackId = data.playbackId;
-      setGallery([...gallery]);
+      setGallery(prevGallery => prevGallery.map(entry => 
+        entry === galleryEntry ? { ...galleryEntry } : entry
+      ));
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
     }
