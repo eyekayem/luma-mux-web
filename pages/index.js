@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-  // Default work panel state
   const defaultWorkPanel = {
     firstImagePrompt: 'A fashion show for clowns, on the runway. Everyone in the audience is not a clown.',
     lastImagePrompt: 'Holding a hand mirror up and seeing that you are a clown.',
@@ -18,7 +17,7 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
-  // ✅ Load saved gallery & work panel state on mount
+  // ✅ Load work panel and gallery from local storage on mount
   useEffect(() => {
     const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
     setGallery(storedGallery);
@@ -154,18 +153,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
-      <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-center">Kinoprompt.bklt.ai</h1>
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia} disabled={isGenerating}>
-            {isGenerating ? "Generating..." : "Generate"}
-          </button>
-        </div>
-      </div>
+    <div className="container">
+      {/* UI Elements Here */}
     </div>
   );
 }
