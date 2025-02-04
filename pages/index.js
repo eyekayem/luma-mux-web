@@ -17,26 +17,26 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
+  // ✅ Load Gallery on Mount
   useEffect(() => {
     async function fetchGallery() {
-        try {
-            const response = await fetch('/api/gallery');
-            const data = await response.json();
-            
-            if (data.gallery && Array.isArray(data.gallery)) {
-                setGallery(data.gallery);
-            } else {
-                console.warn("📌 No gallery data found, setting default.");
-                setGallery([]);
-            }
-        } catch (error) {
-            console.error("❌ Failed to fetch gallery:", error);
-            setGallery([]);
+      try {
+        const response = await fetch('/api/gallery');
+        const data = await response.json();
+
+        if (data.gallery && Array.isArray(data.gallery)) {
+          setGallery(data.gallery);
+        } else {
+          setGallery([]);
         }
+      } catch (error) {
+        console.error("❌ Failed to fetch gallery:", error);
+        setGallery([]);
+      }
     }
+
     fetchGallery();
 
-    // ✅ Load work panel from localStorage
     const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
     setFirstImagePrompt(storedWorkPanel.firstImagePrompt);
     setLastImagePrompt(storedWorkPanel.lastImagePrompt);
@@ -51,6 +51,7 @@ export default function Home() {
     localStorage.setItem('workPanel', JSON.stringify({ firstImagePrompt, lastImagePrompt, videoPrompt }));
   }, [firstImagePrompt, lastImagePrompt, videoPrompt]);
 
+  // ✅ Generate Media
   async function generateMedia() {
     setIsGenerating(true);
     setMuxPlaybackId(null);
@@ -61,9 +62,9 @@ export default function Home() {
 
     const newEntry = {
       firstImagePrompt,
-      firstImageUrl: '',
+      firstImageUrl: 'https://via.placeholder.com/300x200?text=Generating+First+Image',
       lastImagePrompt,
-      lastImageUrl: '',
+      lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
       videoPrompt,
       muxPlaybackId: 'waiting',
     };
@@ -85,6 +86,7 @@ export default function Home() {
     }
   }
 
+  // ✅ Poll for Images
   async function pollForImages(firstJobId, lastJobId, galleryEntry) {
     console.log('🔄 Polling for image completion...');
 
@@ -112,6 +114,7 @@ export default function Home() {
     }, 2000);
   }
 
+  // ✅ Generate Video
   async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
     if (!firstImageUrl || !lastImageUrl) {
       console.error("❌ Missing image URLs.");
@@ -133,6 +136,7 @@ export default function Home() {
     }
   }
 
+  // ✅ Poll for Video
   async function pollForVideo(videoJobId, galleryEntry) {
     console.log('🔄 Polling for video completion...');
 
@@ -147,6 +151,7 @@ export default function Home() {
     }, 2000);
   }
 
+  // ✅ Upload to Mux
   async function startMuxUpload(videoUrl, galleryEntry) {
     console.log("🚀 Uploading video to Mux:", videoUrl);
 
@@ -178,17 +183,22 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
-      {/* Work Panel */}
-      <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-center">Kinoprompt.bklt.ai</h1>
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia} disabled={isGenerating}>
-            {isGenerating ? "Generating..." : "Generate"}
-          </button>
-        </div>
+      <h1 className="text-3xl font-bold">Kinoprompt.bklt.ai</h1>
+
+      <button className="p-3 bg-blue-600 rounded-lg mt-4" onClick={generateMedia} disabled={isGenerating}>
+        {isGenerating ? "Generating..." : "Generate"}
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+        {gallery.map((entry, index) => (
+          <div key={index} className="bg-gray-800 p-4 rounded-lg">
+            <p className="text-sm">{entry.firstImagePrompt}</p>
+            <img src={entry.firstImageUrl} alt="First Image" />
+            <p className="text-sm">{entry.lastImagePrompt}</p>
+            <img src={entry.lastImageUrl} alt="Last Image" />
+            {entry.muxPlaybackId !== "waiting" && <VideoPlayer playbackId={entry.muxPlaybackId} />}
+          </div>
+        ))}
       </div>
     </div>
   );
