@@ -129,6 +129,8 @@ export default function Home() {
     if (data.playbackId) {
       console.log("✅ Video successfully uploaded to Mux:", data.playbackId);
       setMuxPlaybackId(data.playbackId);
+
+      // ✅ Update gallery & reset generation status
       setGallery((prevGallery) => [
         {
           firstImagePrompt,
@@ -140,6 +142,11 @@ export default function Home() {
         },
         ...prevGallery,
       ]);
+
+      setIsGenerating(false);
+    } else {
+      console.error("❌ Error uploading video to Mux:", data.error);
+      setIsGenerating(false);
     }
   }
 
