@@ -2,9 +2,16 @@ import { useState } from "react";
 import VideoPlayer from "../components/VideoPlayer";
 
 export default function Home() {
-  const [firstImagePrompt, setFirstImagePrompt] = useState("A futuristic city skyline");
-  const [lastImagePrompt, setLastImagePrompt] = useState("The same city but in ruins");
-  const [videoPrompt, setVideoPrompt] = useState("A smooth cinematic transition");
+const [firstImagePrompt, setFirstImagePrompt] = useState(
+  "A fashion show for clowns, on the runway. Everyone in the audience is not a clown."
+);
+const [lastImagePrompt, setLastImagePrompt] = useState(
+  "Holding a hand mirror up and seeing that you are a clown."
+);
+const [videoPrompt, setVideoPrompt] = useState(
+  "Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown."
+);
+
   
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
