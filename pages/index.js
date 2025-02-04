@@ -128,18 +128,32 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-4xl font-bold mb-6">kinoprompt.bklt.al</h1>
-    
-      <div className="w-full max-w-xl space-y-4">
-        <textarea className="input" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
-        <textarea className="input" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
-        <textarea className="input" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-        <button className="button w-full" onClick={generateMedia} disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate Media"}
+    <>
+      <div>
+        <h1>kinoprompt.bklt.al</h1>
+        <button onClick={generateMedia} disabled={isGenerating}>
+          {isGenerating ? 'Generating...' : 'Generate Media'}
         </button>
       </div>
-    </div>
+  
+      {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>No video available</p>}
+  
+      <div className="gallery">
+        {gallery.map((entry, index) => (
+          <div key={index} className="gallery-item">
+            <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
+            <img src={entry.firstImageUrl} alt="First Image" />
+            <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
+            <img src={entry.lastImageUrl} alt="Last Image" />
+            <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
+            <VideoPlayer playbackId={entry.muxPlaybackId} />
+            <button onClick={() => reloadGeneration(entry)}>Reload</button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
 
       {muxPlaybackId ? <VideoPlayer playbackId={muxPlaybackId} /> : <p>No video available</p>}
       <div className="gallery">
