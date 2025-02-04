@@ -10,6 +10,7 @@ export default function Home() {
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState('');
   const [gallery, setGallery] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
@@ -21,21 +22,95 @@ export default function Home() {
   }, [gallery]);
 
   async function generateMedia() {
+    setIsGenerating(true);
+    setMuxPlaybackId("");
+    setFirstImageUrl(null);
+    setLastImageUrl(null);
     console.log('🚀 Generating media...');
-    setFirstImageUrl('https://via.placeholder.com/300x200?text=First+Image');
-    setLastImageUrl('https://via.placeholder.com/300x200?text=Last+Image');
-    setMuxPlaybackId('placeholder');
 
-    setTimeout(() => {
-      const firstUrl = 'https://example.com/first.jpg';
-      const lastUrl = 'https://example.com/last.jpg';
-      const videoId = 'samplePlaybackId';
-      setFirstImageUrl(firstUrl);
-      setLastImageUrl(lastUrl);
-      setMuxPlaybackId(videoId);
-      
-      setGallery([{ firstImagePrompt, firstImageUrl: firstUrl, lastImagePrompt, lastImageUrl: lastUrl, videoPrompt, muxPlaybackId: videoId }, ...gallery]);
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImagePrompt, lastImagePrompt })
+    });
+
+    const data = await response.json();
+    if (data.firstImageJobId && data.lastImageJobId) {
+      pollForImages(data.firstImageJobId, data.lastImageJobId);
+    } else {
+      console.error('❌ Error generating images:', data.error);
+      setIsGenerating(false);
+    }
+  }
+
+  async function pollForImages(firstJobId, lastJobId) {
+    console.log('🔄 Polling for image completion...');
+
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+      const data = await response.json();
+
+      if (data.firstImageUrl && !firstImageUrl) setFirstImageUrl(data.firstImageUrl);
+      if (data.lastImageUrl && !lastImageUrl) setLastImageUrl(data.lastImageUrl);
+
+      if (data.firstImageUrl && data.lastImageUrl) {
+        clearInterval(pollInterval);
+        startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
+      }
     }, 2000);
+  }
+
+  async function startVideoGeneration(firstImageUrl, lastImageUrl) {
+    if (!firstImageUrl || !lastImageUrl) {
+      console.error("❌ Missing image URLs.");
+      return;
+    }
+
+    const response = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt })
+    });
+
+    const data = await response.json();
+    if (data.videoJobId) {
+      pollForVideo(data.videoJobId);
+    } else {
+      console.error("❌ Error creating video:", data.error);
+      setIsGenerating(false);
+    }
+  }
+
+  async function pollForVideo(videoJobId) {
+    console.log('🔄 Polling for video completion...');
+
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
+      const data = await response.json();
+
+      if (data.videoUrl) {
+        clearInterval(pollInterval);
+        startMuxUpload(data.videoUrl);
+      }
+    }, 2000);
+  }
+
+  async function startMuxUpload(videoUrl) {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl })
+    });
+
+    const data = await response.json();
+    if (data.playbackId) {
+      setMuxPlaybackId(data.playbackId);
+      setGallery([{ firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId: data.playbackId }, ...gallery]);
+      setIsGenerating(false);
+    } else {
+      console.error("❌ Error uploading video to Mux:", data.error);
+      setIsGenerating(false);
+    }
   }
 
   return (
@@ -46,31 +121,13 @@ export default function Home() {
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
           <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia}>Generate</button>
+          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={generateMedia} disabled={isGenerating}>{isGenerating ? "Generating..." : "Generate"}</button>
         </div>
         <div className="grid grid-cols-1 gap-4">
           <img src={firstImageUrl || 'https://via.placeholder.com/300x200?text=First+Image'} className="w-full rounded-lg" alt="First Image" />
           <img src={lastImageUrl || 'https://via.placeholder.com/300x200?text=Last+Image'} className="w-full rounded-lg" alt="Last Image" />
           {muxPlaybackId && <VideoPlayer playbackId={muxPlaybackId} className="w-full" />}
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10 w-full max-w-6xl">
-        {gallery.map((entry, index) => (
-          <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col items-center text-center">
-            <p className="text-sm text-gray-400">{entry.firstImagePrompt}</p>
-            <img src={entry.firstImageUrl} alt="First" className="w-full rounded-lg" />
-            <p className="text-sm text-gray-400">{entry.lastImagePrompt}</p>
-            <img src={entry.lastImageUrl} alt="Last" className="w-full rounded-lg" />
-            <p className="text-sm text-gray-400">{entry.videoPrompt}</p>
-            <VideoPlayer playbackId={entry.muxPlaybackId} className="w-full" />
-            <button className="mt-2 bg-blue-500 p-2 rounded-lg text-white" onClick={() => {
-              setFirstImagePrompt(entry.firstImagePrompt);
-              setLastImagePrompt(entry.lastImagePrompt);
-              setVideoPrompt(entry.videoPrompt);
-            }}>Reprompt</button>
-          </div>
-        ))}
       </div>
     </div>
   );
