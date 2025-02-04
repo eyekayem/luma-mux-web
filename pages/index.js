@@ -2,41 +2,46 @@ import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
-  // Work panel state (should persist separately)
-  const [firstImagePrompt, setFirstImagePrompt] = useState('');
-  const [lastImagePrompt, setLastImagePrompt] = useState('');
-  const [videoPrompt, setVideoPrompt] = useState('');
+  // Default work panel state
+  const defaultWorkPanel = {
+    firstImagePrompt: 'A fashion show for clowns, on the runway. Everyone in the audience is not a clown.',
+    lastImagePrompt: 'Holding a hand mirror up and seeing that you are a clown.',
+    videoPrompt: 'Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.',
+  };
+
+  const [firstImagePrompt, setFirstImagePrompt] = useState(defaultWorkPanel.firstImagePrompt);
+  const [lastImagePrompt, setLastImagePrompt] = useState(defaultWorkPanel.lastImagePrompt);
+  const [videoPrompt, setVideoPrompt] = useState(defaultWorkPanel.videoPrompt);
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Gallery state
   const [gallery, setGallery] = useState([]);
 
-  // Load gallery and work panel state on mount
+  // ✅ Load saved gallery & work panel state on mount
   useEffect(() => {
     const storedGallery = JSON.parse(localStorage.getItem('gallery')) || [];
     setGallery(storedGallery);
-    const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || {};
-    setFirstImagePrompt(storedWorkPanel.firstImagePrompt || '');
-    setLastImagePrompt(storedWorkPanel.lastImagePrompt || '');
-    setVideoPrompt(storedWorkPanel.videoPrompt || '');
+
+    const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
+    setFirstImagePrompt(storedWorkPanel.firstImagePrompt);
+    setLastImagePrompt(storedWorkPanel.lastImagePrompt);
+    setVideoPrompt(storedWorkPanel.videoPrompt);
   }, []);
 
-  // Save gallery state on updates
+  // ✅ Save gallery state to local storage
   useEffect(() => {
     localStorage.setItem('gallery', JSON.stringify(gallery));
   }, [gallery]);
 
-  // Save work panel state
+  // ✅ Save work panel state to local storage
   useEffect(() => {
     localStorage.setItem('workPanel', JSON.stringify({ firstImagePrompt, lastImagePrompt, videoPrompt }));
   }, [firstImagePrompt, lastImagePrompt, videoPrompt]);
 
   async function generateMedia() {
     setIsGenerating(true);
-    setMuxPlaybackId(null); // Reset Mux player
+    setMuxPlaybackId(null);
     setFirstImageUrl(null);
     setLastImageUrl(null);
 
@@ -48,10 +53,10 @@ export default function Home() {
       lastImagePrompt,
       lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
       videoPrompt,
-      muxPlaybackId: 'waiting'
+      muxPlaybackId: 'waiting',
     };
 
-    // Prepend to gallery immediately
+    // ✅ Prepend new entry to gallery immediately
     setGallery((prevGallery) => [newEntry, ...prevGallery]);
 
     const response = await fetch('/api/generate', {
@@ -78,11 +83,9 @@ export default function Home() {
 
       if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
       if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
-      
+
       setGallery((prevGallery) =>
-        prevGallery.map((entry) =>
-          entry === galleryEntry ? { ...galleryEntry } : entry
-        )
+        prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
       );
 
       if (data.firstImageUrl && data.lastImageUrl) {
@@ -137,11 +140,12 @@ export default function Home() {
     const data = await response.json();
     if (data.playbackId) {
       galleryEntry.muxPlaybackId = data.playbackId;
+
+      // ✅ Force UI refresh to display new video
       setGallery((prevGallery) =>
-        prevGallery.map((entry) =>
-          entry === galleryEntry ? { ...galleryEntry } : entry
-        )
+        prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
       );
+
       setIsGenerating(false);
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
