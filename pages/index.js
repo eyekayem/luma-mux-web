@@ -29,7 +29,7 @@ export default function Home() {
       lastImagePrompt,
       lastImageUrl: 'https://via.placeholder.com/300x200?text=Last+Image',
       videoPrompt,
-      muxPlaybackId: ''
+      muxPlaybackId: 'waiting'
     };
 
     setGallery([newEntry, ...gallery]);
@@ -55,15 +55,8 @@ export default function Home() {
       const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
       const data = await response.json();
 
-      if (data.firstImageUrl) {
-        galleryEntry.firstImageUrl = data.firstImageUrl;
-        setFirstImageUrl(data.firstImageUrl);
-      }
-      if (data.lastImageUrl) {
-        galleryEntry.lastImageUrl = data.lastImageUrl;
-        setLastImageUrl(data.lastImageUrl);
-      }
-      
+      if (data.firstImageUrl) galleryEntry.firstImageUrl = data.firstImageUrl;
+      if (data.lastImageUrl) galleryEntry.lastImageUrl = data.lastImageUrl;
       setGallery([...gallery]);
 
       if (data.firstImageUrl && data.lastImageUrl) {
@@ -117,7 +110,6 @@ export default function Home() {
     const data = await response.json();
     if (data.playbackId) {
       galleryEntry.muxPlaybackId = data.playbackId;
-      setMuxPlaybackId(data.playbackId);
       setGallery([...gallery]);
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
@@ -137,21 +129,8 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-4">
           <img src={firstImageUrl || 'https://via.placeholder.com/300x200?text=First+Image'} className="w-full rounded-lg" alt="First Image" />
           <img src={lastImageUrl || 'https://via.placeholder.com/300x200?text=Last+Image'} className="w-full rounded-lg" alt="Last Image" />
-          {muxPlaybackId && <VideoPlayer playbackId={muxPlaybackId} className="w-full" />}
+          {muxPlaybackId !== 'waiting' ? <VideoPlayer playbackId={muxPlaybackId} className="w-full" /> : <p>Waiting for video...</p>}
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 w-full max-w-5xl">
-        {gallery.map((entry, index) => (
-          <div key={index} className="p-4 bg-gray-800 rounded-lg">
-            <p className="text-sm">{entry.firstImagePrompt}</p>
-            <img src={entry.firstImageUrl || 'https://via.placeholder.com/300x200?text=First+Image'} alt="First" className="rounded-lg w-full my-2" />
-            <p className="text-sm">{entry.lastImagePrompt}</p>
-            <img src={entry.lastImageUrl || 'https://via.placeholder.com/300x200?text=Last+Image'} alt="Last" className="rounded-lg w-full my-2" />
-            <p className="text-sm">{entry.videoPrompt}</p>
-            {entry.muxPlaybackId ? <VideoPlayer playbackId={entry.muxPlaybackId} className="w-full my-2" /> : <p className="text-gray-500">Waiting for video...</p>}
-          </div>
-        ))}
       </div>
     </div>
   );
