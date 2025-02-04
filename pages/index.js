@@ -72,80 +72,72 @@ export default function Home() {
   }
 
   // ✅ Handle "Generate Media" Button Click
-  async function generateMedia() {
-    setIsGenerating(true);
-    setMuxPlaybackId(null);
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
+async function generateMedia() {
+  setIsGenerating(true);
+  setMuxPlaybackId(null);
+  setFirstImageUrl(null);
+  setLastImageUrl(null);
 
-    console.log('🚀 Generating media...');
+  console.log('🚀 Generating media...');
 
-    // ✅ Create Placeholder Entry in Gallery
-    const newEntry = {
-      firstImagePrompt,
-      firstImageUrl: 'https://via.placeholder.com/300x200?text=Generating+First+Image',
-      lastImagePrompt,
-      lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
-      videoPrompt,
-      muxPlaybackId: 'waiting',
-    };
+  // ✅ Generate a unique ID for this gallery entry
+  const entryId = Date.now().toString(); // Simple timestamp-based unique ID
 
-    setGallery((prevGallery) => [newEntry, ...prevGallery]);
+  // ✅ Create Placeholder Entry in Gallery
+  const newEntry = {
+    id: entryId,  // 🔥 NEW: Unique identifier
+    firstImagePrompt,
+    firstImageUrl: 'https://via.placeholder.com/300x200?text=Generating+First+Image',
+    lastImagePrompt,
+    lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
+    videoPrompt,
+    muxPlaybackId: 'waiting',
+  };
 
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstImagePrompt, lastImagePrompt }),
-    });
+  setGallery((prevGallery) => [newEntry, ...prevGallery]);
 
-    const data = await response.json();
-    if (data.firstImageJobId && data.lastImageJobId) {
-      pollForImages(data.firstImageJobId, data.lastImageJobId, newEntry);
-    } else {
-      console.error('❌ Error generating images:', data.error);
-      setIsGenerating(false);
-    }
+  const response = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firstImagePrompt, lastImagePrompt }),
+  });
+
+  const data = await response.json();
+  if (data.firstImageJobId && data.lastImageJobId) {
+    pollForImages(data.firstImageJobId, data.lastImageJobId, entryId);
+  } else {
+    console.error('❌ Error generating images:', data.error);
+    setIsGenerating(false);
   }
+}
+
 
   // ✅ Polls Luma AI API for image updates and updates work panel & gallery
-  async function pollForImages(firstJobId, lastJobId, galleryEntry) {
-      console.log('🔄 Polling for image completion...');
+  async function pollForImages(firstJobId, lastJobId, entryId) {
+    console.log('🔄 Polling for image completion...', { entryId });
   
-      const pollInterval = setInterval(async () => {
-          const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
-          const data = await response.json();
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+      const data = await response.json();
   
-          console.log("📡 Poll Response:", data);
+      console.log("📡 Poll Response:", data);
   
-          let updated = false;
+      setGallery((prevGallery) =>
+        prevGallery.map((entry) =>
+          entry.id === entryId
+            ? { ...entry, firstImageUrl: data.firstImageUrl || entry.firstImageUrl, lastImageUrl: data.lastImageUrl || entry.lastImageUrl }
+            : entry
+        )
+      );
   
-          if (data.firstImageUrl && galleryEntry.firstImageUrl.includes("Generating")) {
-              console.log("✅ First Image Ready:", data.firstImageUrl);
-              galleryEntry.firstImageUrl = data.firstImageUrl;
-              setFirstImageUrl(data.firstImageUrl);
-              updated = true;
-          }
-          if (data.lastImageUrl && galleryEntry.lastImageUrl.includes("Generating")) {
-              console.log("✅ Last Image Ready:", data.lastImageUrl);
-              galleryEntry.lastImageUrl = data.lastImageUrl;
-              setLastImageUrl(data.lastImageUrl);
-              updated = true;
-          }
-  
-          if (updated) {
-              console.log("🔄 Updating gallery with new images...");
-              setGallery((prevGallery) =>
-                  prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
-              );
-          }
-  
-          if (data.firstImageUrl && data.lastImageUrl) {
-              console.log("✅ Both images ready, stopping polling and starting video generation.");
-              clearInterval(pollInterval);
-              startVideoGeneration(data.firstImageUrl, data.lastImageUrl, galleryEntry);
-          }
-      }, 2000);
+      if (data.firstImageUrl && data.lastImageUrl) {
+        console.log("✅ Both images ready, stopping polling and starting video generation.");
+        clearInterval(pollInterval);
+        startVideoGeneration(data.firstImageUrl, data.lastImageUrl, entryId);
+      }
+    }, 2000);
   }
+
 
 // ✅ Starts video generation after both images are ready
 async function startVideoGeneration(firstImageUrl, lastImageUrl, galleryEntry) {
@@ -187,7 +179,7 @@ async function pollForVideo(videoJobId, galleryEntry) {
 }
 
 // ✅ Uploads video to Mux once it's generated
-async function startMuxUpload(videoUrl, galleryEntry) {
+async function startMuxUpload(videoUrl, entryId) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
   const response = await fetch('/api/upload', {
@@ -202,10 +194,10 @@ async function startMuxUpload(videoUrl, galleryEntry) {
   if (data.playbackId) {
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
-    // ✅ Update the gallery entry with the new Mux playback ID
+    // ✅ Update only the correct gallery entry using ID
     setGallery((prevGallery) =>
       prevGallery.map((entry) =>
-        entry === galleryEntry ? { ...entry, muxPlaybackId: data.playbackId } : entry
+        entry.id === entryId ? { ...entry, muxPlaybackId: data.playbackId } : entry
       )
     );
 
