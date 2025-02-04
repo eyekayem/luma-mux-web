@@ -1,46 +1,48 @@
-import { useState } from 'react';
-import VideoPlayer from '../components/VideoPlayer';
+import { useState } from "react";
+import VideoPlayer from "../components/VideoPlayer";
 
 export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [videoPrompt, setVideoPrompt] = useState('');
-  const [firstImageJobId, setFirstImageJobId] = useState('');
-  const [lastImageJobId, setLastImageJobId] = useState('');
-  const [videoJobId, setVideoJobId] = useState('');
-  const [muxPlaybackId, setMuxPlaybackId] = useState('');
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [firstImageJobId, setFirstImageJobId] = useState("");
+  const [lastImageJobId, setLastImageJobId] = useState("");
+  const [videoJobId, setVideoJobId] = useState("");
+  const [muxPlaybackId, setMuxPlaybackId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function generateMedia() {
     setIsGenerating(true);
-    console.log('🚀 Sending request to generate images...');
+    console.log("🚀 Sending request to generate images...");
 
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         firstImagePrompt: "A futuristic city skyline",
-        lastImagePrompt: "The same city but in ruins"
-      })
+        lastImagePrompt: "The same city but in ruins",
+      }),
     });
 
     const data = await response.json();
     if (data.firstImageJobId && data.lastImageJobId) {
-      console.log('✅ Image jobs created:', data);
+      console.log("✅ Image jobs created:", data);
       setFirstImageJobId(data.firstImageJobId);
       setLastImageJobId(data.lastImageJobId);
       pollForImages(data.firstImageJobId, data.lastImageJobId);
     } else {
-      console.error('❌ Error creating images:', data.error);
+      console.error("❌ Error creating images:", data.error);
       setIsGenerating(false);
     }
   }
 
   async function pollForImages(firstJobId, lastJobId) {
-    console.log('🔄 Polling for image completion...');
+    console.log("🔄 Polling for image completion...");
 
     const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+      const response = await fetch(
+        `/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`
+      );
       const data = await response.json();
       console.log("📊 Status Update:", data);
 
@@ -55,7 +57,7 @@ export default function Home() {
 
       if (data.readyForVideo) {
         clearInterval(pollInterval);
-        console.log('🎬 Images ready, starting video generation...');
+        console.log("🎬 Images ready, starting video generation...");
         startVideoGeneration(data.firstImageUrl, data.lastImageUrl);
       }
     }, 5000);
@@ -71,10 +73,14 @@ export default function Home() {
       return;
     }
 
-    const response = await fetch('/api/generate-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt: "A smooth cinematic transition" })
+    const response = await fetch("/api/generate-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstImageUrl,
+        lastImageUrl,
+        videoPrompt: "A smooth cinematic transition",
+      }),
     });
 
     const data = await response.json();
@@ -91,16 +97,16 @@ export default function Home() {
   }
 
   async function pollForVideo(videoJobId) {
-    console.log('🔄 Polling for video completion...');
+    console.log("🔄 Polling for video completion...");
 
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
       const data = await response.json();
-      console.log('📊 Video Status Update:', data);
+      console.log("📊 Video Status Update:", data);
 
       if (data.videoUrl) {
         clearInterval(pollInterval);
-        console.log('✅ Video ready:', data.videoUrl);
+        console.log("✅ Video ready:", data.videoUrl);
 
         // 🚀 Start Mux upload after video is ready
         startMuxUpload(data.videoUrl);
@@ -111,10 +117,10 @@ export default function Home() {
   async function startMuxUpload(videoUrl) {
     console.log("🚀 Uploading video to Mux:", videoUrl);
 
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoUrl })
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoUrl }),
     });
 
     const data = await response.json();
@@ -130,43 +136,75 @@ export default function Home() {
       console.error("❌ Error uploading video to Mux:", data.error);
     }
   }
+
   async function pollMuxStatus(assetId) {
-    console.log('🔄 Polling Mux for video readiness...');
-  
+    console.log("🔄 Polling Mux for video readiness...");
+
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/upload?assetId=${assetId}`);
       const data = await response.json();
-  
+
       console.log("📊 Mux Status Update:", data);
-  
+
       if (data.status === "ready" && data.playbackId) {
         clearInterval(pollInterval); // Stop polling when ready
         console.log("✅ Mux Video Ready! Playback ID:", data.playbackId);
-  
-        // Delay setting playbackId by 5 sec to ensure Mux is fully ready
+
+        // Delay setting playbackId by 2.5 sec to ensure Mux is fully ready
         setTimeout(() => {
           setMuxPlaybackId(data.playbackId);
         }, 2500);
       }
-    }, 1000); // Poll every 5 seconds
+    }, 1000); // Poll every second
   }
 
-
   return (
-    <div>
+    <div className="container">
       <h1>kinoprompt.bklt.al</h1>
-      <button onClick={generateMedia} disabled={isGenerating}>
-        {isGenerating ? 'Generating...' : 'Generate Media'}
-      </button>
 
-      {firstImageUrl && <img src={firstImageUrl} alt="First Image" />}
-      {lastImageUrl && <img src={lastImageUrl} alt="Last Image" />}
+      <div className="input-section">
+        <button onClick={generateMedia} disabled={isGenerating}>
+          {isGenerating ? "Generating..." : "Generate Media"}
+        </button>
+      </div>
 
-      {muxPlaybackId ? (
-        <VideoPlayer playbackId={muxPlaybackId} />
-      ) : (
-        <p>No video available</p>
-      )}
+      <div className="media-grid">
+        {firstImageUrl && (
+          <img src={firstImageUrl} alt="First Image" className="image-preview" />
+        )}
+        {lastImageUrl && (
+          <img src={lastImageUrl} alt="Last Image" className="image-preview" />
+        )}
+        {muxPlaybackId ? (
+          <VideoPlayer playbackId={muxPlaybackId} />
+        ) : (
+          <p>No video available</p>
+        )}
+      </div>
+
+      <style jsx>{`
+        .container {
+          text-align: center;
+          padding: 20px;
+          background-color: #121212;
+          color: white;
+          font-family: Arial, sans-serif;
+        }
+        .input-section {
+          margin-bottom: 20px;
+        }
+        .media-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          max-width: 800px;
+          margin: auto;
+        }
+        .image-preview {
+          width: 100%;
+          border-radius: 8px;
+        }
+      `}</style>
     </div>
   );
 }
