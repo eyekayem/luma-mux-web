@@ -131,26 +131,37 @@ export default function Home() {
     }, 2000);
   }
 
-  async function startMuxUpload(videoUrl, galleryEntry) {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoUrl }),
-    });
-
-    const data = await response.json();
-    if (data.playbackId) {
-      galleryEntry.muxPlaybackId = data.playbackId;
-
-      setGallery((prevGallery) =>
-        prevGallery.map((entry) => (entry === galleryEntry ? { ...galleryEntry } : entry))
-      );
-
-      setIsGenerating(false);
-    } else {
-      console.error("❌ Error uploading video to Mux:", data.error);
-      setIsGenerating(false);
+    async function startMuxUpload(videoUrl, galleryEntry) {
+        console.log("🚀 Uploading video to Mux:", videoUrl);
+    
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl }),
+        });
+    
+        const data = await response.json();
+        console.log("📡 Mux Upload Response:", data);
+    
+        if (data.playbackId) {
+            console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+    
+            // **Updating the gallery correctly**
+            setGallery((prevGallery) =>
+                prevGallery.map((entry) =>
+                    entry === galleryEntry ? { ...entry, muxPlaybackId: data.playbackId } : entry
+                )
+            );
+    
+            // **Ensure the Work Panel video updates immediately**
+            setMuxPlaybackId(data.playbackId);
+            setIsGenerating(false);
+        } else {
+            console.error("❌ Error uploading video to Mux:", data.error);
+            setIsGenerating(false);
+        }
     }
+
   }
 
   return (
