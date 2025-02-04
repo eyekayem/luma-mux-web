@@ -22,3 +22,20 @@ body {
 .video-container {
   @apply w-full rounded-lg shadow-lg border border-gray-700;
 }
+
+/* Gallery styles */
+.gallery {
+  @apply flex flex-col gap-6 mt-8;
+}
+
+.gallery-item {
+  @apply bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 flex flex-col items-center text-center;
+}
+
+.gallery-item img {
+  @apply w-full max-w-sm rounded-lg border border-gray-600;
+}
+
+.gallery-item button {
+  @apply bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-3 rounded-lg mt-2 transition-all;
+}
