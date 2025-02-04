@@ -115,19 +115,23 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoUrl }),
     });
-
+  
     const data = await response.json();
     if (data.playbackId) {
-      galleryEntry.muxPlaybackId = data.playbackId;
-      setGallery(prevGallery => prevGallery.map(entry => 
-        entry === galleryEntry ? { ...galleryEntry } : entry
-      ));
-      setIsGenerating(false);
+      console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+  
+      // ✅ Delay setting Mux Playback ID to prevent premature errors
+      setTimeout(() => {
+        galleryEntry.muxPlaybackId = data.playbackId;
+        setGallery(prevGallery =>
+          prevGallery.map(entry => entry === galleryEntry ? { ...galleryEntry } : entry)
+        );
+      }, 3000); // Give Mux time to confirm readiness
     } else {
       console.error("❌ Error uploading video to Mux:", data.error);
-      setIsGenerating(false);
     }
   }
+
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
@@ -150,15 +154,21 @@ export default function Home() {
 
       <div className="mt-6 grid grid-cols-3 gap-4 w-full max-w-5xl">
         {gallery.map((entry, index) => (
-          <div key={index} className="bg-gray-800 p-4 rounded-lg">
-            <p className="text-sm">{entry.firstImagePrompt}</p>
-            <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
-            <p className="text-sm">{entry.lastImagePrompt}</p>
-            <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
-            <p className="text-sm">{entry.videoPrompt}</p>
-            {entry.muxPlaybackId !== 'waiting' ? <VideoPlayer playbackId={entry.muxPlaybackId} /> : <p>Waiting for video...</p>}
-          </div>
-        ))}
+        <div key={index} className="gallery-item p-4 border border-gray-700 rounded-lg my-4">
+          <p><strong>First Image Prompt:</strong> {entry.firstImagePrompt}</p>
+          <img src={entry.firstImageUrl} alt="First Image" className="rounded-lg w-full" />
+          <p><strong>Last Image Prompt:</strong> {entry.lastImagePrompt}</p>
+          <img src={entry.lastImageUrl} alt="Last Image" className="rounded-lg w-full" />
+          <p><strong>Action / Camera Prompt:</strong> {entry.videoPrompt}</p>
+      
+          {entry.muxPlaybackId && entry.muxPlaybackId !== 'waiting' ? (
+            <VideoPlayer playbackId={entry.muxPlaybackId} />
+          ) : (
+            <p>Waiting for video...</p>
+          )}
+        </div>
+      ))}
+
       </div>
     </div>
   );
