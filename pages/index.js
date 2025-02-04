@@ -146,9 +146,9 @@ export default function Home() {
         // Delay setting playbackId by 5 sec to ensure Mux is fully ready
         setTimeout(() => {
           setMuxPlaybackId(data.playbackId);
-        }, 5000);
+        }, 2500);
       }
-    }, 5000); // Poll every 5 seconds
+    }, 1000); // Poll every 5 seconds
   }
 
 
