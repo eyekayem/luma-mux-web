@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,8 +7,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { firstImageJobId, lastImageJobId, videoJobId } = req.query;
+  const { entryId, firstImageJobId, lastImageJobId, videoJobId } = req.query;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
+
+  if (!entryId) {
+    console.error("❌ Missing entryId in request.");
+    return res.status(400).json({ error: 'Missing entryId' });
+  }
 
   if (!LUMA_API_KEY) {
     console.error("❌ Missing Luma API Key.");
@@ -34,6 +40,7 @@ export default async function handler(req, res) {
       return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
+    // ✅ Fetch latest status from Luma
     const firstImageUrl = await checkJobStatus(firstImageJobId, "First Image");
     const lastImageUrl = await checkJobStatus(lastImageJobId, "Last Image");
     const videoUrl = videoJobId ? await checkJobStatus(videoJobId, "Video") : null;
@@ -42,6 +49,19 @@ export default async function handler(req, res) {
     const readyForMux = !!videoUrl;
 
     console.log("📊 Status Update:", { firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
+
+    // ✅ Update database if images are ready
+    if (firstImageUrl || lastImageUrl || videoUrl) {
+      await sql`
+        UPDATE gallery
+        SET 
+          first_image_url = COALESCE(${firstImageUrl}, first_image_url),
+          last_image_url = COALESCE(${lastImageUrl}, last_image_url),
+          mux_playback_id = COALESCE(${videoUrl}, mux_playback_id)
+        WHERE id = ${entryId};
+      `;
+      console.log(`✅ Database Updated for entryId: ${entryId}`);
+    }
 
     res.status(200).json({ firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
 
