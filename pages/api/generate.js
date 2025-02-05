@@ -1,3 +1,4 @@
+import { sql } from '@vercel/postgres';
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
@@ -9,7 +10,7 @@ export default async function handler(req, res) {
 
   console.log('🟢 Starting media generation process');
 
-  const { firstImagePrompt, lastImagePrompt } = req.body;
+  const { entryId, firstImagePrompt, lastImagePrompt } = req.body;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
   if (!LUMA_API_KEY) {
@@ -18,7 +19,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('📸 Creating First Image...');
+    // ✅ Request First Image Generation
+    console.log('📸 Requesting First Image...');
     const firstImageResponse = await fetch(
       'https://api.lumalabs.ai/dream-machine/v1/generations/image',
       {
@@ -38,7 +40,8 @@ export default async function handler(req, res) {
       throw new Error(`❌ Failed to create first image. Luma API Response: ${JSON.stringify(firstImageData)}`);
     }
 
-    console.log('📸 Creating Last Image...');
+    // ✅ Request Last Image Generation
+    console.log('📸 Requesting Last Image...');
     const lastImageResponse = await fetch(
       'https://api.lumalabs.ai/dream-machine/v1/generations/image',
       {
@@ -63,7 +66,16 @@ export default async function handler(req, res) {
       lastImageJobId: lastImageData.id 
     });
 
-    // Return job IDs, polling will happen on the frontend
+    // ✅ Update the database with the job IDs
+    await sql`
+      UPDATE gallery
+      SET first_image_job_id = ${firstImageData.id}, last_image_job_id = ${lastImageData.id}
+      WHERE id = ${entryId};
+    `;
+
+    console.log(`✅ Stored job IDs in DB for entryId: ${entryId}`);
+
+    // ✅ Return job IDs, polling will happen on the frontend
     res.status(200).json({
       firstImageJobId: firstImageData.id,
       lastImageJobId: lastImageData.id
