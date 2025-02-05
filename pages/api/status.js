@@ -106,11 +106,13 @@ export default async function handler(req, res) {
       readyForMux 
     });
 
-    if (
-      (updatedFirstImageUrl && updatedFirstImageUrl !== "pending") || 
-      (updatedLastImageUrl && updatedLastImageUrl !== "pending") || 
-      (updatedVideoUrl && updatedVideoUrl !== "pending")
-    ) {
+    // ✅ Only update database if values have changed
+    const needsUpdate = 
+      (updatedFirstImageUrl && updatedFirstImageUrl !== "pending" && updatedFirstImageUrl !== first_image_url) || 
+      (updatedLastImageUrl && updatedLastImageUrl !== "pending" && updatedLastImageUrl !== last_image_url) || 
+      (updatedVideoUrl && updatedVideoUrl !== "pending" && updatedVideoUrl !== video_url);
+
+    if (needsUpdate) {
       console.log(`🔄 Updating database entry ${parsedEntryId} with new image/video URLs...`);
       await sql`
         UPDATE gallery
@@ -121,6 +123,8 @@ export default async function handler(req, res) {
         WHERE id = ${parsedEntryId}::integer;
       `;
       console.log(`✅ Database Updated for entryId: ${parsedEntryId}`);
+    } else {
+      console.log(`🔹 No changes detected for entryId: ${parsedEntryId}. Skipping database update.`);
     }
 
     res.status(200).json({ 
