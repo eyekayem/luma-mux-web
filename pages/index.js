@@ -18,8 +18,10 @@ export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState(null);
+  const [muxVideoUrl, setMuxVideoUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
+  const [currentEntryId, setCurrentEntryId] = useState(null);
 
   // ✅ Fetch Shared Gallery & Load Work Panel State on Page Load
   useEffect(() => {
@@ -197,7 +199,7 @@ async function pollForVideo(videoJobId, entryId) {
   }, 2000);
 }
 
-// ✅ Uploads video to Mux & Updates Shared Gallery
+// ✅ Uploads video to Mux
 async function startMuxUpload(videoUrl, entryId) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
@@ -213,20 +215,19 @@ async function startMuxUpload(videoUrl, entryId) {
   if (data.playbackId) {
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
-    // ✅ Update the gallery entry in local state
-    setGallery((prevGallery) =>
-      prevGallery.map((entry) =>
-        entry.id === entryId ? { ...entry, muxPlaybackId: data.playbackId } : entry
-      )
-    );
+    // ✅ Update the database with the Mux playback ID instead of local state
+    await fetch(`/api/gallery/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entryId, muxPlaybackId: data.playbackId }),
+    });
 
-    setMuxPlaybackId(data.playbackId);
-    setIsGenerating(false);
+    console.log("✅ Database Updated with Mux Playback ID");
   } else {
     console.error("❌ Error uploading video to Mux:", data.error);
-    setIsGenerating(false);
   }
 }
+
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
