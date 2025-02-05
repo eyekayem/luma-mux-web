@@ -7,14 +7,31 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { entryId } = req.query;
-  if (!entryId) {
-    console.error("❌ Missing entryId in request.");
-    return res.status(400).json({ error: 'Missing entryId' });
+  const { entryId, videoJobId } = req.query;
+  let parsedEntryId = parseInt(entryId, 10);
+
+  if (!entryId && !videoJobId) {
+    console.error("❌ Missing entryId or videoJobId in request.");
+    return res.status(400).json({ error: 'Missing entryId or videoJobId' });
   }
 
-  // ✅ Convert entryId to an integer to prevent SQL errors
-  const parsedEntryId = parseInt(entryId, 10);
+  // ✅ Fetch entryId if only videoJobId is provided
+  if (!entryId && videoJobId) {
+    try {
+      const result = await sql`
+        SELECT id FROM gallery WHERE video_job_id = ${videoJobId}
+      `;
+      if (result.rows.length === 0) {
+        console.error(`❌ No entry found for videoJobId: ${videoJobId}`);
+        return res.status(404).json({ error: 'Entry not found' });
+      }
+      parsedEntryId = result.rows[0].id;
+    } catch (error) {
+      console.error("❌ Database error fetching entryId:", error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+  }
+
   if (isNaN(parsedEntryId)) {
     console.error(`❌ Invalid entryId: ${entryId}`);
     return res.status(400).json({ error: "Invalid entryId" });
@@ -27,7 +44,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔥 Fetch Job IDs and Image URLs from Database
+    // ✅ Fetch Job IDs and Image URLs from Database
     const result = await sql`
       SELECT first_image_job_id, last_image_job_id, video_job_id, 
              first_image_url, last_image_url, video_url
@@ -62,7 +79,7 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-        console.log(`📊 ${type} Full Response:`, JSON.stringify(data, null, 2)); // 🔥 Debugging Log
+        console.log(`📊 ${type} Full Response:`, JSON.stringify(data, null, 2));
 
         if (data.state === 'failed') {
           console.error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
@@ -71,7 +88,7 @@ export default async function handler(req, res) {
 
         if (data.state !== 'completed') {
           console.log(`⏳ ${type} still processing...`);
-          return "pending"; // ✅ Ensure we track pending correctly
+          return "pending";
         }
 
         return type === 'Video' ? data.assets.video : data.assets.image;
@@ -125,7 +142,7 @@ export default async function handler(req, res) {
       console.log(`✅ Database Updated for entryId: ${parsedEntryId}`);
     }
 
-    // ✅ Respond with the updated values
+    // ✅ Respond with updated values
     res.status(200).json({ 
       firstImageUrl: updatedFirstImageUrl, 
       lastImageUrl: updatedLastImageUrl, 
