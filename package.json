@@ -18,6 +18,7 @@
     "@mux/mux-node": "^4.0.0",
     "@mux/mux-player-react": "^1.15.0",
     "@neondatabase/serverless": "latest",
+    "@vercel/postgres": "latest",
     "next-video": "latest"
   },
   "devDependencies": {
