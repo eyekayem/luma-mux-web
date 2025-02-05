@@ -20,9 +20,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔥 Fetch Job IDs from Database if not provided in request
+    // 🔥 Fetch Job IDs and Image URLs from Database
     const result = await sql`
-      SELECT first_image_job_id, last_image_job_id, video_job_id, first_image_url, last_image_url, video_url
+      SELECT first_image_job_id, last_image_job_id, video_job_id, 
+             first_image_url, last_image_url, video_url
       FROM gallery WHERE id = ${entryId}
     `;
 
@@ -55,36 +56,49 @@ export default async function handler(req, res) {
       console.log(`📊 ${type} Status Response:`, data);
 
       if (data.state === 'failed') {
-        throw new Error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
+        console.error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
+        return null;
       }
 
       return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
-    // ✅ Fetch latest status from Luma API if URLs are still pending
-    if (!first_image_url) first_image_url = await checkJobStatus(first_image_job_id, "First Image");
-    if (!last_image_url) last_image_url = await checkJobStatus(last_image_job_id, "Last Image");
-    if (!video_url && video_job_id) video_url = await checkJobStatus(video_job_id, "Video");
+    // ✅ Fetch latest status from Luma API only if URLs are still missing
+    let updatedFirstImageUrl = first_image_url || await checkJobStatus(first_image_job_id, "First Image");
+    let updatedLastImageUrl = last_image_url || await checkJobStatus(last_image_job_id, "Last Image");
+    let updatedVideoUrl = video_url || (video_job_id ? await checkJobStatus(video_job_id, "Video") : null);
 
-    const readyForVideo = !!(first_image_url && last_image_url);
-    const readyForMux = !!video_url;
+    const readyForVideo = !!(updatedFirstImageUrl && updatedLastImageUrl);
+    const readyForMux = !!updatedVideoUrl;
 
-    console.log("📊 Status Update:", { first_image_url, last_image_url, video_url, readyForVideo, readyForMux });
+    console.log("📊 Status Update:", { 
+      firstImageUrl: updatedFirstImageUrl, 
+      lastImageUrl: updatedLastImageUrl, 
+      videoUrl: updatedVideoUrl, 
+      readyForVideo, 
+      readyForMux 
+    });
 
-    // ✅ Update the database if new URLs are found
-    if (first_image_url || last_image_url || video_url) {
+    // ✅ Update the database only if new values exist
+    if (updatedFirstImageUrl || updatedLastImageUrl || updatedVideoUrl) {
       await sql`
         UPDATE gallery
         SET 
-          first_image_url = COALESCE(${first_image_url}, first_image_url),
-          last_image_url = COALESCE(${last_image_url}, last_image_url),
-          video_url = COALESCE(${video_url}, video_url)
+          first_image_url = COALESCE(${updatedFirstImageUrl}, first_image_url),
+          last_image_url = COALESCE(${updatedLastImageUrl}, last_image_url),
+          video_url = COALESCE(${updatedVideoUrl}, video_url)
         WHERE id = ${entryId};
       `;
       console.log(`✅ Database Updated for entryId: ${entryId}`);
     }
 
-    res.status(200).json({ firstImageUrl: first_image_url, lastImageUrl: last_image_url, videoUrl: video_url, readyForVideo, readyForMux });
+    res.status(200).json({ 
+      firstImageUrl: updatedFirstImageUrl, 
+      lastImageUrl: updatedLastImageUrl, 
+      videoUrl: updatedVideoUrl, 
+      readyForVideo, 
+      readyForMux 
+    });
 
   } catch (error) {
     console.error("❌ Error checking job status:", error);
