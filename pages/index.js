@@ -201,7 +201,7 @@ async function pollForVideo(videoJobId, galleryEntry) {
 }
 
 // ✅ Uploads video to Mux & Updates Shared Gallery
-async function startMuxUpload(videoUrl, galleryEntry) {
+async function startMuxUpload(videoUrl, entryId) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
   const response = await fetch('/api/upload', {
@@ -216,17 +216,29 @@ async function startMuxUpload(videoUrl, galleryEntry) {
   if (data.playbackId) {
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
-    // ✅ Update the gallery entry with the new Mux playback ID
-    galleryEntry.muxPlaybackId = data.playbackId;
+    // ✅ Update the gallery entry inside the local state
+    setGallery((prevGallery) =>
+      prevGallery.map((entry) =>
+        entry.id === entryId ? { ...entry, muxPlaybackId: data.playbackId } : entry
+      )
+    );
 
-    // ✅ Update the Shared Gallery on the server
-    await fetch('/api/gallery', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(galleryEntry),
-    });
+    // ✅ Find the correct gallery entry to send to the server
+    const updatedEntry = gallery.find((entry) => entry.id === entryId);
+    if (updatedEntry) {
+      updatedEntry.muxPlaybackId = data.playbackId;
 
-    // ✅ Reload the Shared Gallery
+      // ✅ Update the Shared Gallery on the server
+      await fetch('/api/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEntry),
+      });
+
+      console.log("📡 Shared Gallery Updated with Mux Playback ID.");
+    }
+
+    // ✅ Reload the Shared Gallery from the server
     const updatedGalleryResponse = await fetch('/api/gallery');
     const updatedGalleryData = await updatedGalleryResponse.json();
     setGallery(updatedGalleryData.gallery);
@@ -238,6 +250,7 @@ async function startMuxUpload(videoUrl, galleryEntry) {
     setIsGenerating(false);
   }
 }
+
 
 
   
