@@ -21,26 +21,29 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
 
-  // ✅ Load Gallery & Work Panel from Storage
-  useEffect(() => {
-    console.log("📂 Loading gallery and work panel...");
-    async function fetchGallery() {
-      try {
-        const response = await fetch('/api/gallery');
-        const data = await response.json();
-        if (data.gallery && Array.isArray(data.gallery)) {
-          setGallery(data.gallery);
-          console.log("✅ Gallery Loaded:", data.gallery);
-        } else {
-          console.warn("📌 No gallery data found, setting default.");
-          setGallery([]);
-        }
-      } catch (error) {
-        console.error("❌ Failed to fetch gallery:", error);
+// ✅ Load Shared Gallery on Page Load
+useEffect(() => {
+  console.log("📂 Fetching shared gallery from server...");
+
+  async function fetchGallery() {
+    try {
+      const response = await fetch('/api/gallery');
+      const data = await response.json();
+      if (data.gallery && Array.isArray(data.gallery)) {
+        setGallery(data.gallery);
+        console.log("✅ Shared Gallery Loaded:", data.gallery);
+      } else {
+        console.warn("📌 No shared gallery data found.");
         setGallery([]);
       }
+    } catch (error) {
+      console.error("❌ Failed to fetch shared gallery:", error);
+      setGallery([]);
     }
-    fetchGallery();
+  }
+
+  fetchGallery();
+}, []);
 
     // ✅ Load Work Panel State
     const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
@@ -198,8 +201,8 @@ async function pollForVideo(videoJobId, galleryEntry) {
   }, 2000);
 }
 
-// ✅ Uploads video to Mux once it's generated
-async function startMuxUpload(videoUrl, entryId) {
+// ✅ Uploads video to Mux & Updates Shared Gallery
+async function startMuxUpload(videoUrl, galleryEntry) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
   const response = await fetch('/api/upload', {
@@ -214,14 +217,21 @@ async function startMuxUpload(videoUrl, entryId) {
   if (data.playbackId) {
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
-    // ✅ Update only the correct gallery entry using ID
-    setGallery((prevGallery) =>
-      prevGallery.map((entry) =>
-        entry.id === entryId ? { ...entry, muxPlaybackId: data.playbackId } : entry
-      )
-    );
+    // ✅ Update the gallery entry with the new Mux playback ID
+    galleryEntry.muxPlaybackId = data.playbackId;
 
-    // ✅ Ensure the Work Panel video updates immediately
+    // ✅ Update the Shared Gallery on the server
+    await fetch('/api/gallery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(galleryEntry),
+    });
+
+    // ✅ Reload the Shared Gallery
+    const updatedGalleryResponse = await fetch('/api/gallery');
+    const updatedGalleryData = await updatedGalleryResponse.json();
+    setGallery(updatedGalleryData.gallery);
+
     setMuxPlaybackId(data.playbackId);
     setIsGenerating(false);
   } else {
@@ -229,6 +239,7 @@ async function startMuxUpload(videoUrl, entryId) {
     setIsGenerating(false);
   }
 }
+
 
   
   return (
