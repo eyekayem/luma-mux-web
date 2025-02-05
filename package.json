@@ -17,7 +17,7 @@
     "lumaai": "^1.0.0",
     "@mux/mux-node": "^4.0.0",
     "@mux/mux-player-react": "^1.15.0",
-    "@neondatabase/serverless": "^1.0.0",
+    "@neondatabase/serverless": "latest",
     "next-video": "latest"
   },
   "devDependencies": {
