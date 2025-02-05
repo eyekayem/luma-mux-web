@@ -7,31 +7,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { entryId, videoJobId } = req.query;
-  let parsedEntryId = parseInt(entryId, 10);
-
-  if (!entryId && !videoJobId) {
-    console.error("❌ Missing entryId or videoJobId in request.");
-    return res.status(400).json({ error: 'Missing entryId or videoJobId' });
+  const { entryId } = req.query;
+  if (!entryId) {
+    console.error("❌ Missing entryId in request.");
+    return res.status(400).json({ error: 'Missing entryId' });
   }
 
-  // ✅ Fetch entryId if only videoJobId is provided
-  if (!entryId && videoJobId) {
-    try {
-      const result = await sql`
-        SELECT id FROM gallery WHERE video_job_id = ${videoJobId}
-      `;
-      if (result.rows.length === 0) {
-        console.error(`❌ No entry found for videoJobId: ${videoJobId}`);
-        return res.status(404).json({ error: 'Entry not found' });
-      }
-      parsedEntryId = result.rows[0].id;
-    } catch (error) {
-      console.error("❌ Database error fetching entryId:", error);
-      return res.status(500).json({ error: 'Database error' });
-    }
-  }
-
+  const parsedEntryId = parseInt(entryId, 10);
   if (isNaN(parsedEntryId)) {
     console.error(`❌ Invalid entryId: ${entryId}`);
     return res.status(400).json({ error: "Invalid entryId" });
@@ -44,7 +26,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ Fetch Job IDs and Image URLs from Database
     const result = await sql`
       SELECT first_image_job_id, last_image_job_id, video_job_id, 
              first_image_url, last_image_url, video_url
@@ -68,7 +49,7 @@ export default async function handler(req, res) {
     console.log(`📡 Fetched Job IDs:`, { first_image_job_id, last_image_job_id, video_job_id });
 
     async function checkJobStatus(jobId, type) {
-      if (!jobId) return null;
+      if (!jobId) return "pending";
 
       console.log(`🔄 Checking ${type} Job Status: ${jobId}...`);
 
@@ -83,7 +64,7 @@ export default async function handler(req, res) {
 
         if (data.state === 'failed') {
           console.error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
-          return null;
+          return "failed";
         }
 
         if (data.state !== 'completed') {
@@ -92,29 +73,26 @@ export default async function handler(req, res) {
         }
 
         return type === 'Video' ? data.assets.video : data.assets.image;
-
       } catch (error) {
         console.error(`❌ Error fetching ${type} job ${jobId}:`, error);
-        return null;
+        return "pending";
       }
     }
 
-    // ✅ Fetch latest status from Luma API only if URLs are still missing or pending
-    let updatedFirstImageUrl = first_image_url === "pending" || !first_image_url
+    let updatedFirstImageUrl = (first_image_url === "pending" || !first_image_url)
       ? await checkJobStatus(first_image_job_id, "First Image")
       : first_image_url;
 
-    let updatedLastImageUrl = last_image_url === "pending" || !last_image_url
+    let updatedLastImageUrl = (last_image_url === "pending" || !last_image_url)
       ? await checkJobStatus(last_image_job_id, "Last Image")
       : last_image_url;
 
-    let updatedVideoUrl = video_url === "pending" || (!video_url && video_job_id)
+    let updatedVideoUrl = (video_url === "pending" || (!video_url && video_job_id))
       ? await checkJobStatus(video_job_id, "Video")
       : video_url;
 
-    // ✅ Ensure we only mark as ready when URLs are NOT "pending"
-    const readyForVideo = updatedFirstImageUrl && updatedLastImageUrl && updatedFirstImageUrl !== "pending" && updatedLastImageUrl !== "pending";
-    const readyForMux = updatedVideoUrl && updatedVideoUrl !== "pending";
+    const readyForVideo = updatedFirstImageUrl !== "pending" && updatedLastImageUrl !== "pending";
+    const readyForMux = updatedVideoUrl !== "pending";
 
     console.log("📊 Status Update:", { 
       firstImageUrl: updatedFirstImageUrl, 
@@ -124,7 +102,6 @@ export default async function handler(req, res) {
       readyForMux 
     });
 
-    // ✅ Update the database only if new values exist (and are not "pending")
     if (
       (updatedFirstImageUrl && updatedFirstImageUrl !== "pending") || 
       (updatedLastImageUrl && updatedLastImageUrl !== "pending") || 
@@ -142,7 +119,6 @@ export default async function handler(req, res) {
       console.log(`✅ Database Updated for entryId: ${parsedEntryId}`);
     }
 
-    // ✅ Respond with updated values
     res.status(200).json({ 
       firstImageUrl: updatedFirstImageUrl, 
       lastImageUrl: updatedLastImageUrl, 
@@ -150,7 +126,6 @@ export default async function handler(req, res) {
       readyForVideo, 
       readyForMux 
     });
-
   } catch (error) {
     console.error("❌ Error checking job status:", error);
     res.status(500).json({ error: error.message });
