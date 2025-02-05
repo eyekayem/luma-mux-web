@@ -80,22 +80,22 @@ export default async function handler(req, res) {
       readyForMux 
     });
 
-    // ✅ Update the database **only if new values exist**
-    if (updatedFirstImageUrl !== first_image_url || 
-        updatedLastImageUrl !== last_image_url || 
-        updatedVideoUrl !== video_url) {
-      
+    // ✅ Update the database only if Luma API returns a new URL
+    if (updatedFirstImageUrl || updatedLastImageUrl || updatedVideoUrl) {
+      console.log(`🔄 Updating database entry ${entryId} with new image/video URLs...`);
+    
       await sql`
         UPDATE gallery
         SET 
-          first_image_url = COALESCE(${updatedFirstImageUrl}, first_image_url),
-          last_image_url = COALESCE(${updatedLastImageUrl}, last_image_url),
-          video_url = COALESCE(${updatedVideoUrl}, video_url)
+          first_image_url = CASE WHEN ${updatedFirstImageUrl} IS NOT NULL THEN ${updatedFirstImageUrl} ELSE first_image_url END,
+          last_image_url = CASE WHEN ${updatedLastImageUrl} IS NOT NULL THEN ${updatedLastImageUrl} ELSE last_image_url END,
+          video_url = CASE WHEN ${updatedVideoUrl} IS NOT NULL THEN ${updatedVideoUrl} ELSE video_url END
         WHERE id = ${entryId};
       `;
-
-      console.log(`✅ [${new Date().toISOString()}] Database Updated for entryId: ${entryId}`);
+    
+      console.log(`✅ Database Updated for entryId: ${entryId}`);
     }
+
 
     res.status(200).json({ 
       firstImageUrl: updatedFirstImageUrl, 
