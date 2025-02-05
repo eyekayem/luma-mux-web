@@ -146,24 +146,44 @@ async function pollForImages(entryId) {
 }
 
 
-  // ✅ Start Video Generation
-  async function startVideoGeneration(entryId) {
+// ✅ Start Video Generation
+async function startVideoGeneration(entryId) {
     console.log("🎬 Starting Video Generation...");
     
-    const response = await fetch('/api/generate-video', {
+    // 🔥 Fetch Latest Image URLs from DB Before Proceeding
+    const response = await fetch(`/api/status?entryId=${entryId}`);
+    const data = await response.json();
+    
+    console.log("🔍 Checking Image URLs Before Video Generation:", data);
+
+    if (!data.firstImageUrl || !data.lastImageUrl) {
+        console.error("❌ Missing Image URLs for Video Generation. Aborting.");
+        return;
+    }
+
+    const videoResponse = await fetch('/api/generate-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entryId, videoPrompt }),
+      body: JSON.stringify({ 
+        entryId,
+        firstImageUrl: data.firstImageUrl,  // 🔥 Use latest URL from DB
+        lastImageUrl: data.lastImageUrl,   // 🔥 Use latest URL from DB
+        videoPrompt 
+      }),
     });
     
-    const data = await response.json();
-    if (data.videoJobId) {
-      pollForVideo(data.videoJobId, entryId);
+    const videoData = await videoResponse.json();
+    
+    console.log("📡 Video Generation API Response:", videoData);
+
+    if (videoData.videoJobId) {
+      pollForVideo(videoData.videoJobId, entryId);
     } else {
-      console.error("❌ Video generation failed:", data.error);
+      console.error("❌ Video generation failed:", videoData.error);
       setIsGenerating(false);
     }
-  }
+}
+
 
   // ✅ Poll for Video Completion
   async function pollForVideo(videoJobId, entryId) {
