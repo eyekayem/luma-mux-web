@@ -7,20 +7,41 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { entryId, firstImageJobId, lastImageJobId, videoJobId } = req.query;
-  const LUMA_API_KEY = process.env.LUMA_API_KEY;
-
+  const { entryId } = req.query;
   if (!entryId) {
     console.error("❌ Missing entryId in request.");
     return res.status(400).json({ error: 'Missing entryId' });
   }
 
+  const LUMA_API_KEY = process.env.LUMA_API_KEY;
   if (!LUMA_API_KEY) {
     console.error("❌ Missing Luma API Key.");
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
 
   try {
+    // 🔥 Fetch Job IDs from Database if not provided in request
+    const result = await sql`
+      SELECT first_image_job_id, last_image_job_id, video_job_id, first_image_url, last_image_url, video_url
+      FROM gallery WHERE id = ${entryId}
+    `;
+
+    if (result.rows.length === 0) {
+      console.error(`❌ No entry found for ID: ${entryId}`);
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    let {
+      first_image_job_id,
+      last_image_job_id,
+      video_job_id,
+      first_image_url,
+      last_image_url,
+      video_url,
+    } = result.rows[0];
+
+    console.log(`📡 Fetched Job IDs:`, { first_image_job_id, last_image_job_id, video_job_id });
+
     async function checkJobStatus(jobId, type) {
       if (!jobId) return null;
 
@@ -40,30 +61,30 @@ export default async function handler(req, res) {
       return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
-    // ✅ Fetch latest status from Luma
-    const firstImageUrl = await checkJobStatus(firstImageJobId, "First Image");
-    const lastImageUrl = await checkJobStatus(lastImageJobId, "Last Image");
-    const videoUrl = videoJobId ? await checkJobStatus(videoJobId, "Video") : null;
+    // ✅ Fetch latest status from Luma API if URLs are still pending
+    if (!first_image_url) first_image_url = await checkJobStatus(first_image_job_id, "First Image");
+    if (!last_image_url) last_image_url = await checkJobStatus(last_image_job_id, "Last Image");
+    if (!video_url && video_job_id) video_url = await checkJobStatus(video_job_id, "Video");
 
-    const readyForVideo = !!(firstImageUrl && lastImageUrl);
-    const readyForMux = !!videoUrl;
+    const readyForVideo = !!(first_image_url && last_image_url);
+    const readyForMux = !!video_url;
 
-    console.log("📊 Status Update:", { firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
+    console.log("📊 Status Update:", { first_image_url, last_image_url, video_url, readyForVideo, readyForMux });
 
-    // ✅ Update database if images are ready
-    if (firstImageUrl || lastImageUrl || videoUrl) {
+    // ✅ Update the database if new URLs are found
+    if (first_image_url || last_image_url || video_url) {
       await sql`
         UPDATE gallery
         SET 
-          first_image_url = COALESCE(${firstImageUrl}, first_image_url),
-          last_image_url = COALESCE(${lastImageUrl}, last_image_url),
-          mux_playback_id = COALESCE(${videoUrl}, mux_playback_id)
+          first_image_url = COALESCE(${first_image_url}, first_image_url),
+          last_image_url = COALESCE(${last_image_url}, last_image_url),
+          video_url = COALESCE(${video_url}, video_url)
         WHERE id = ${entryId};
       `;
       console.log(`✅ Database Updated for entryId: ${entryId}`);
     }
 
-    res.status(200).json({ firstImageUrl, lastImageUrl, videoUrl, readyForVideo, readyForMux });
+    res.status(200).json({ firstImageUrl: first_image_url, lastImageUrl: last_image_url, videoUrl: video_url, readyForVideo, readyForMux });
 
   } catch (error) {
     console.error("❌ Error checking job status:", error);
