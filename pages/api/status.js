@@ -46,6 +46,10 @@ export default async function handler(req, res) {
       video_url,
     } = result.rows[0];
 
+    if (!video_job_id) {
+      console.warn(`⚠️ Missing videoJobId in request. Fetching from DB...`);
+      video_job_id = result.rows[0].video_job_id;
+    }
     console.log(`📡 Fetched Job IDs:`, { first_image_job_id, last_image_job_id, video_job_id });
 
     async function checkJobStatus(jobId, type) {
