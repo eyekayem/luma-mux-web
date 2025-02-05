@@ -148,32 +148,37 @@ async function pollForImages(entryId) {
 
 // ✅ Start Video Generation
 async function startVideoGeneration(entryId) {
-    console.log("🎬 Starting Video Generation...");
-    
-    // 🔥 Fetch Latest Image URLs from DB Before Proceeding
+    console.log("🎬 Fetching latest image URLs before starting video generation...");
+
+    // 🔥 Fetch Latest Image URLs from Database
     const response = await fetch(`/api/status?entryId=${entryId}`);
     const data = await response.json();
-    
-    console.log("🔍 Checking Image URLs Before Video Generation:", data);
 
-    if (!data.firstImageUrl || !data.lastImageUrl) {
-        console.error("❌ Missing Image URLs for Video Generation. Aborting.");
+    console.log("🔍 Confirming Image URLs Before Video Generation:", data);
+
+    if (!data.firstImageUrl || !data.lastImageUrl || data.firstImageUrl === 'pending' || data.lastImageUrl === 'pending') {
+        console.error("❌ Missing or Pending Image URLs. Aborting video generation.");
         return;
     }
+
+    console.log("📤 Sending video generation request with:", {
+      firstImageUrl: data.firstImageUrl,
+      lastImageUrl: data.lastImageUrl,
+      videoPrompt,
+    });
 
     const videoResponse = await fetch('/api/generate-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         entryId,
-        firstImageUrl: data.firstImageUrl,  // 🔥 Use latest URL from DB
-        lastImageUrl: data.lastImageUrl,   // 🔥 Use latest URL from DB
+        firstImageUrl: data.firstImageUrl,  
+        lastImageUrl: data.lastImageUrl,   
         videoPrompt 
       }),
     });
-    
+
     const videoData = await videoResponse.json();
-    
     console.log("📡 Video Generation API Response:", videoData);
 
     if (videoData.videoJobId) {
