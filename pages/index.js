@@ -102,48 +102,36 @@ async function startImageGeneration() {
 
 // ✅ Poll for Image Completion
 async function pollForImages(entryId) {
-    console.log(`🔄 [${new Date().toISOString()}] Polling for image completion...`, { entryId });
+  console.log('🔄 Polling for image completion...', { entryId });
 
-    const pollInterval = setInterval(async () => {
-        try {
-            const response = await fetch(`/api/status?entryId=${entryId}`);
-            const data = await response.json();
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(`/api/status?entryId=${entryId}`);
+    const data = await response.json();
 
-            console.log(`📡 [${new Date().toISOString()}] Poll Response (Image):`, data);  // 🔥 Debugging Log
+    console.log("📡 Poll Response (Image):", data);
 
-            let updated = false;
+    if (data.firstImageUrl && data.firstImageUrl !== "pending") {
+      setFirstImageUrl(data.firstImageUrl);
+    }
 
-            if (data.firstImageUrl && data.firstImageUrl !== firstImageUrl) {
-                console.log(`✅ First Image Ready: ${data.firstImageUrl}`);
-                setFirstImageUrl(data.firstImageUrl);
-                updated = true;
-            }
+    if (data.lastImageUrl && data.lastImageUrl !== "pending") {
+      setLastImageUrl(data.lastImageUrl);
+    }
 
-            if (data.lastImageUrl && data.lastImageUrl !== lastImageUrl) {
-                console.log(`✅ Last Image Ready: ${data.lastImageUrl}`);
-                setLastImageUrl(data.lastImageUrl);
-                updated = true;
-            }
-
-            // ✅ Stop polling & trigger video generation once both images are ready
-            if (data.firstImageUrl && data.lastImageUrl) {
-                console.log("✅ Both images are ready! Stopping polling and starting video generation.");
-                clearInterval(pollInterval);
-                startVideoGeneration(entryId);
-            }
-
-            // ✅ Stop polling if API returns an error
-            if (data.error) {
-                console.error(`❌ Error during image polling: ${data.error}`);
-                clearInterval(pollInterval);
-            }
-
-        } catch (error) {
-            console.error(`❌ Error polling image status: ${error.message}`);
-            clearInterval(pollInterval);  // Prevents infinite loops
-        }
-    }, 2000);
+    // ✅ Only proceed when both images have actual URLs, not "pending"
+    if (
+      data.firstImageUrl &&
+      data.firstImageUrl !== "pending" &&
+      data.lastImageUrl &&
+      data.lastImageUrl !== "pending"
+    ) {
+      console.log("✅ Both images are ready! Stopping polling and starting video generation.");
+      clearInterval(pollInterval);
+      startVideoGeneration(entryId);
+    }
+  }, 2000);
 }
+
 
 
 // ✅ Start Video Generation
