@@ -13,6 +13,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing entryId' });
   }
 
+  // ✅ Convert entryId to an integer to prevent SQL errors
+  const parsedEntryId = parseInt(entryId, 10);
+  if (isNaN(parsedEntryId)) {
+    console.error(`❌ Invalid entryId: ${entryId}`);
+    return res.status(400).json({ error: "Invalid entryId" });
+  }
+
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
   if (!LUMA_API_KEY) {
     console.error("❌ Missing Luma API Key.");
@@ -24,11 +31,11 @@ export default async function handler(req, res) {
     const result = await sql`
       SELECT first_image_job_id, last_image_job_id, video_job_id, 
              first_image_url, last_image_url, video_url
-      FROM gallery WHERE id = ${entryId}
+      FROM gallery WHERE id = ${parsedEntryId}
     `;
 
     if (result.rows.length === 0) {
-      console.error(`❌ No entry found for ID: ${entryId}`);
+      console.error(`❌ No entry found for ID: ${parsedEntryId}`);
       return res.status(404).json({ error: 'Entry not found' });
     }
 
@@ -41,20 +48,19 @@ export default async function handler(req, res) {
       video_url,
     } = result.rows[0];
 
-    console.log(`📡 [${new Date().toISOString()}] Fetched Job IDs:`, 
-      { first_image_job_id, last_image_job_id, video_job_id });
+    console.log(`📡 Fetched Job IDs:`, { first_image_job_id, last_image_job_id, video_job_id });
 
     async function checkJobStatus(jobId, type) {
       if (!jobId) return null;
 
-      console.log(`🔄 [${new Date().toISOString()}] Checking ${type} Job Status: ${jobId}...`);
+      console.log(`🔄 Checking ${type} Job Status: ${jobId}...`);
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
       });
 
       const data = await response.json();
-      console.log(`📊 [${new Date().toISOString()}] ${type} Status Response:`, data);
+      console.log(`📊 ${type} Status Response:`, data);
 
       if (data.state === 'failed') {
         console.error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
@@ -64,7 +70,7 @@ export default async function handler(req, res) {
       return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
-    // ✅ Fetch latest status from Luma API **only if URLs are still missing**
+    // ✅ Fetch latest status from Luma API only if URLs are still missing
     let updatedFirstImageUrl = first_image_url || await checkJobStatus(first_image_job_id, "First Image");
     let updatedLastImageUrl = last_image_url || await checkJobStatus(last_image_job_id, "Last Image");
     let updatedVideoUrl = video_url || (video_job_id ? await checkJobStatus(video_job_id, "Video") : null);
@@ -72,7 +78,7 @@ export default async function handler(req, res) {
     const readyForVideo = !!(updatedFirstImageUrl && updatedLastImageUrl);
     const readyForMux = !!updatedVideoUrl;
 
-    console.log("📊 [Final Status Update]:", { 
+    console.log("📊 Status Update:", { 
       firstImageUrl: updatedFirstImageUrl, 
       lastImageUrl: updatedLastImageUrl, 
       videoUrl: updatedVideoUrl, 
@@ -80,22 +86,19 @@ export default async function handler(req, res) {
       readyForMux 
     });
 
-    // ✅ Update the database only if Luma API returns a new URL
+    // ✅ Update the database only if new values exist
     if (updatedFirstImageUrl || updatedLastImageUrl || updatedVideoUrl) {
-      console.log(`🔄 Updating database entry ${entryId} with new image/video URLs...`);
-    
+      console.log(`🔄 Updating database entry ${parsedEntryId} with new image/video URLs...`);
       await sql`
         UPDATE gallery
         SET 
-          first_image_url = CASE WHEN ${updatedFirstImageUrl} IS NOT NULL THEN ${updatedFirstImageUrl} ELSE first_image_url END,
-          last_image_url = CASE WHEN ${updatedLastImageUrl} IS NOT NULL THEN ${updatedLastImageUrl} ELSE last_image_url END,
-          video_url = CASE WHEN ${updatedVideoUrl} IS NOT NULL THEN ${updatedVideoUrl} ELSE video_url END
-        WHERE id = ${entryId};
+          first_image_url = COALESCE(${updatedFirstImageUrl}::text, first_image_url),
+          last_image_url = COALESCE(${updatedLastImageUrl}::text, last_image_url),
+          video_url = COALESCE(${updatedVideoUrl}::text, video_url)
+        WHERE id = ${parsedEntryId}::integer;
       `;
-    
-      console.log(`✅ Database Updated for entryId: ${entryId}`);
+      console.log(`✅ Database Updated for entryId: ${parsedEntryId}`);
     }
-
 
     res.status(200).json({ 
       firstImageUrl: updatedFirstImageUrl, 
