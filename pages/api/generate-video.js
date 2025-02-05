@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,7 +7,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { firstImageUrl, lastImageUrl, videoPrompt } = req.body;
+  const { entryId, firstImageUrl, lastImageUrl, videoPrompt } = req.body;
+
+  if (!entryId) {
+    console.error("❌ Missing entryId for video generation.");
+    return res.status(400).json({ error: 'Missing entryId' });
+  }
 
   if (!firstImageUrl || !lastImageUrl) {
     console.error("❌ Missing Image URLs for Video Generation.");
@@ -20,23 +26,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🎬 Preparing to start video generation...");
+    console.log("🎬 Starting Video Generation...");
     console.log("📤 First Image URL:", firstImageUrl);
     console.log("📤 Last Image URL:", lastImageUrl);
     console.log("📤 Video Prompt:", videoPrompt);
+    console.log("📌 Entry ID:", entryId);
 
     const requestBody = {
       generation_type: "video",
       prompt: videoPrompt || "A smooth cinematic transition",
       keyframes: {
-        frame0: {
-          type: "image",
-          url: firstImageUrl.trim()
-        },
-        frame1: {
-          type: "image",
-          url: lastImageUrl.trim()
-        }
+        frame0: { type: "image", url: firstImageUrl.trim() },
+        frame1: { type: "image", url: lastImageUrl.trim() }
       }
     };
 
@@ -60,6 +61,16 @@ export default async function handler(req, res) {
     }
 
     console.log("✅ Video Job ID:", videoData.id);
+
+    // ✅ Store video job ID in the database
+    await sql`
+      UPDATE gallery
+      SET video_job_id = ${videoData.id}
+      WHERE id = ${entryId};
+    `;
+
+    console.log(`✅ Stored Video Job ID in DB for Entry ID: ${entryId}`);
+
     res.status(200).json({ videoJobId: videoData.id });
 
   } catch (error) {
