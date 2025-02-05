@@ -55,24 +55,38 @@ export default function Home() {
 
   // ✅ Handle "Generate Media" Button Click
   async function generateMedia() {
-    setIsGenerating(true);
-    setMuxPlaybackId(null);
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
+  setIsGenerating(true);
+  setMuxPlaybackId(null);
+  setFirstImageUrl(null);
+  setLastImageUrl(null);
 
-    console.log('🚀 Generating media...');
+  console.log('🚀 Generating media and storing in database...');
 
-    const entryId = Date.now().toString(); // 🔥 Unique ID for this entry
-
-    const newEntry = {
-      id: entryId,
+  const response = await fetch('/api/gallery/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       firstImagePrompt,
-      firstImageUrl: 'https://via.placeholder.com/300x200?text=Generating+First+Image',
       lastImagePrompt,
-      lastImageUrl: 'https://via.placeholder.com/300x200?text=Generating+Last+Image',
       videoPrompt,
-      muxPlaybackId: 'waiting',
-    };
+    }),
+  });
+
+  const data = await response.json();
+  if (data.entryId) {
+    console.log("✅ New entry created with ID:", data.entryId);
+
+    // ✅ Store the working entry ID
+    setCurrentEntryId(data.entryId);
+
+    // ✅ Start image generation
+    startImageGeneration(data.entryId);
+  } else {
+    console.error("❌ Error creating database entry:", data.error);
+    setIsGenerating(false);
+  }
+  }
+
 
     setGallery((prevGallery) => [newEntry, ...prevGallery]);
 
