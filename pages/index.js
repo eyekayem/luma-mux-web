@@ -113,30 +113,50 @@ async function generateMedia() {
 
 
   // ✅ Polls Luma AI API for image updates and updates work panel & gallery
-  async function pollForImages(firstJobId, lastJobId, entryId) {
+// ✅ Polls Luma AI API for image updates and updates work panel & gallery
+async function pollForImages(firstJobId, lastJobId, entryId) {
     console.log('🔄 Polling for image completion...', { entryId });
-  
+
     const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
-      const data = await response.json();
-  
-      console.log("📡 Poll Response:", data);
-  
-      setGallery((prevGallery) =>
-        prevGallery.map((entry) =>
-          entry.id === entryId
-            ? { ...entry, firstImageUrl: data.firstImageUrl || entry.firstImageUrl, lastImageUrl: data.lastImageUrl || entry.lastImageUrl }
-            : entry
-        )
-      );
-  
-      if (data.firstImageUrl && data.lastImageUrl) {
-        console.log("✅ Both images ready, stopping polling and starting video generation.");
-        clearInterval(pollInterval);
-        startVideoGeneration(data.firstImageUrl, data.lastImageUrl, entryId);
-      }
+        const response = await fetch(`/api/status?firstImageJobId=${firstJobId}&lastImageJobId=${lastJobId}`);
+        const data = await response.json();
+
+        console.log("📡 Poll Response:", data);
+
+        let updated = false;
+
+        setGallery((prevGallery) =>
+            prevGallery.map((entry) => {
+                if (entry.id !== entryId) return entry;
+
+                const updatedEntry = { ...entry };
+
+                if (data.firstImageUrl && data.firstImageUrl !== entry.firstImageUrl) {
+                    console.log("✅ First Image Ready:", data.firstImageUrl);
+                    updatedEntry.firstImageUrl = data.firstImageUrl;
+                    setFirstImageUrl(data.firstImageUrl); // ✅ Update Work Panel
+                    updated = true;
+                }
+
+                if (data.lastImageUrl && data.lastImageUrl !== entry.lastImageUrl) {
+                    console.log("✅ Last Image Ready:", data.lastImageUrl);
+                    updatedEntry.lastImageUrl = data.lastImageUrl;
+                    setLastImageUrl(data.lastImageUrl); // ✅ Update Work Panel
+                    updated = true;
+                }
+
+                return updatedEntry;
+            })
+        );
+
+        if (data.firstImageUrl && data.lastImageUrl) {
+            console.log("✅ Both images ready, stopping polling and starting video generation.");
+            clearInterval(pollInterval);
+            startVideoGeneration(data.firstImageUrl, data.lastImageUrl, entryId);
+        }
     }, 2000);
-  }
+}
+
 
 
 // ✅ Starts video generation after both images are ready
