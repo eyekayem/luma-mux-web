@@ -132,6 +132,50 @@ export default function Home() {
       }
     }, 2000);
   }
+  
+  // ✅ Starts video generation after both images are ready
+  async function startVideoGeneration(firstImageUrl, lastImageUrl, entryId) {
+    console.log("🎬 Starting Video Generation...");
+  
+    if (!firstImageUrl || !lastImageUrl) {
+      console.error("❌ Missing image URLs. Video generation aborted.");
+      return;
+    }
+  
+    const response = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstImageUrl, lastImageUrl, videoPrompt }),
+    });
+  
+    const data = await response.json();
+    console.log("📡 Video Generation Response:", data);
+  
+    if (data.videoJobId) {
+      pollForVideo(data.videoJobId, entryId);
+    } else {
+      console.error("❌ Video generation failed:", data.error);
+      setIsGenerating(false);
+    }
+  }
+
+  // ✅ Polls the status of the video job until the video is ready
+  async function pollForVideo(videoJobId, entryId) {
+    console.log('🔄 Polling for video completion...');
+  
+    const pollInterval = setInterval(async () => {
+      const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
+      const data = await response.json();
+  
+      console.log("📡 Poll Response (Video):", data);
+  
+      if (data.videoUrl) {
+        clearInterval(pollInterval);
+        startMuxUpload(data.videoUrl, entryId);
+      }
+    }, 2000);
+  }
+
 
   // ✅ Uploads video to Mux & Updates Shared Gallery
   async function startMuxUpload(videoUrl, entryId) {
