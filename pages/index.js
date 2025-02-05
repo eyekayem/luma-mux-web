@@ -43,7 +43,6 @@ useEffect(() => {
   }
 
   fetchGallery();
-}, []);
 
     // ✅ Load Work Panel State
     const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
