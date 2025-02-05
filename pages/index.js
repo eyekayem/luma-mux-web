@@ -126,7 +126,7 @@ export default function Home() {
     }
   }
 
-  // ✅ Polls the status of the video job until the video is ready
+  // ✅ Polls the status of the video job until the video is ready 
   async function trackVideoGeneration(videoJobId, entryId) {
     console.log('🔄 Polling for video completion...');
     const pollInterval = setInterval(async () => {
