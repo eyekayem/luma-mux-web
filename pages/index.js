@@ -197,7 +197,36 @@ async function pollForVideo(videoJobId, entryId) {
   }, 2000);
 }
 
+// ✅ Uploads video to Mux & Updates Shared Gallery
+async function startMuxUpload(videoUrl, entryId) {
+  console.log("🚀 Uploading video to Mux:", videoUrl);
 
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoUrl }),
+  });
+
+  const data = await response.json();
+  console.log("📡 Mux Upload Response:", data);
+
+  if (data.playbackId) {
+    console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+
+    // ✅ Update the gallery entry in local state
+    setGallery((prevGallery) =>
+      prevGallery.map((entry) =>
+        entry.id === entryId ? { ...entry, muxPlaybackId: data.playbackId } : entry
+      )
+    );
+
+    setMuxPlaybackId(data.playbackId);
+    setIsGenerating(false);
+  } else {
+    console.error("❌ Error uploading video to Mux:", data.error);
+    setIsGenerating(false);
+  }
+}
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
