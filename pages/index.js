@@ -54,33 +54,52 @@ export default function Home() {
   }, [firstImagePrompt, lastImagePrompt, videoPrompt]);
 
   // ✅ Start Image Generation
-  async function startImageGeneration() {
-    setIsGenerating(true);
-    setMuxPlaybackId(null);
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
+async function startImageGeneration() {
+  setIsGenerating(true);
+  setMuxPlaybackId(null);
+  setFirstImageUrl(null);
+  setLastImageUrl(null);
 
-    console.log('🚀 Generating media and storing in database...');
+  console.log('🚀 Creating gallery entry in database...');
 
-    const response = await fetch('/api/gallery/create', {
+  const response = await fetch('/api/gallery/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      firstImagePrompt,
+      lastImagePrompt,
+      videoPrompt,
+    }),
+  });
+
+  const data = await response.json();
+  if (data.entryId) {
+    console.log("✅ New entry created with ID:", data.entryId);
+
+    // ✅ Call Luma AI to Generate Images
+    const generateResponse = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        entryId: data.entryId,   // 🔥 Pass entry ID to backend
         firstImagePrompt,
-        lastImagePrompt,
-        videoPrompt,
+        lastImagePrompt
       }),
     });
 
-    const data = await response.json();
-    if (data.entryId) {
-      console.log("✅ New entry created with ID:", data.entryId);
+    const generateData = await generateResponse.json();
+    if (generateData.firstImageJobId && generateData.lastImageJobId) {
       pollForImages(data.entryId);
     } else {
-      console.error("❌ Error creating database entry:", data.error);
+      console.error("❌ Error starting Luma AI generation:", generateData.error);
       setIsGenerating(false);
     }
+  } else {
+    console.error("❌ Error creating database entry:", data.error);
+    setIsGenerating(false);
   }
+}
+
 
   // ✅ Poll for Image Completion
   async function pollForImages(entryId) {
