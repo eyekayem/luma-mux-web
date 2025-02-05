@@ -1,35 +1,50 @@
-import fs from 'fs';
-import path from 'path';
+import { Pool } from '@neondatabase/serverless';
 
-const GALLERY_FILE = path.join(process.cwd(), 'public/gallery.json');
+// ✅ Initialize PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // 🔥 Ensure this is set in Vercel
+  ssl: true,
+});
 
-export default function handler(req, res) {
+// ✅ Handle API requests
+export default async function handler(req, res) {
   if (req.method === 'GET') {
-    console.log("📡 Fetching shared gallery...");
-    
-    if (fs.existsSync(GALLERY_FILE)) {
-      const galleryData = JSON.parse(fs.readFileSync(GALLERY_FILE, 'utf8'));
-      res.status(200).json({ gallery: galleryData });
-    } else {
-      res.status(200).json({ gallery: [] });
+    try {
+      console.log("📡 Fetching shared gallery from database...");
+      const result = await pool.query(
+        `SELECT * FROM gallery ORDER BY created_at DESC`
+      );
+      res.status(200).json({ gallery: result.rows });
+    } catch (error) {
+      console.error("❌ Database Fetch Error:", error);
+      res.status(500).json({ error: "Failed to fetch gallery" });
     }
+  }
 
-  } else if (req.method === 'POST') {
-    console.log("📝 Adding new entry to shared gallery...");
+  else if (req.method === 'POST') {
+    try {
+      console.log("📝 Adding new entry to shared gallery...");
 
-    const newEntry = req.body;
-    let galleryData = [];
+      const { firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId } = req.body;
+      if (!firstImagePrompt || !firstImageUrl || !lastImagePrompt || !lastImageUrl || !videoPrompt || !muxPlaybackId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
 
-    if (fs.existsSync(GALLERY_FILE)) {
-      galleryData = JSON.parse(fs.readFileSync(GALLERY_FILE, 'utf8'));
+      const result = await pool.query(
+        `INSERT INTO gallery (first_image_prompt, first_image_url, last_image_prompt, last_image_url, video_prompt, mux_playback_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId]
+      );
+
+      console.log("✅ New Entry Saved:", result.rows[0]);
+      res.status(200).json({ message: "Gallery updated successfully", entry: result.rows[0] });
+    } catch (error) {
+      console.error("❌ Database Insert Error:", error);
+      res.status(500).json({ error: "Failed to save entry" });
     }
+  }
 
-    galleryData.unshift(newEntry); // Add new entry at the top
-
-    fs.writeFileSync(GALLERY_FILE, JSON.stringify(galleryData, null, 2));
-
-    res.status(200).json({ message: "Gallery updated successfully" });
-  } else {
+  else {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
