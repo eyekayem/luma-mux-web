@@ -23,25 +23,21 @@ export default function Home() {
 
 // ✅ Load Shared Gallery on Page Load
 useEffect(() => {
-  console.log("📂 Fetching shared gallery from server...");
-
   async function fetchGallery() {
     try {
       const response = await fetch('/api/gallery');
       const data = await response.json();
       if (data.gallery && Array.isArray(data.gallery)) {
         setGallery(data.gallery);
-        console.log("✅ Shared Gallery Loaded:", data.gallery);
       } else {
-        console.warn("📌 No shared gallery data found.");
+        console.warn("📌 No gallery data found, setting default.");
         setGallery([]);
       }
     } catch (error) {
-      console.error("❌ Failed to fetch shared gallery:", error);
+      console.error("❌ Failed to fetch gallery:", error);
       setGallery([]);
     }
   }
-
   fetchGallery();
 
     // ✅ Load Work Panel State
