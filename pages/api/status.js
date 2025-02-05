@@ -41,19 +41,20 @@ export default async function handler(req, res) {
       video_url,
     } = result.rows[0];
 
-    console.log(`📡 Fetched Job IDs:`, { first_image_job_id, last_image_job_id, video_job_id });
+    console.log(`📡 [${new Date().toISOString()}] Fetched Job IDs:`, 
+      { first_image_job_id, last_image_job_id, video_job_id });
 
     async function checkJobStatus(jobId, type) {
       if (!jobId) return null;
 
-      console.log(`🔄 Checking ${type} Job Status: ${jobId}...`);
+      console.log(`🔄 [${new Date().toISOString()}] Checking ${type} Job Status: ${jobId}...`);
       const response = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${jobId}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${LUMA_API_KEY}` }
       });
 
       const data = await response.json();
-      console.log(`📊 ${type} Status Response:`, data);
+      console.log(`📊 [${new Date().toISOString()}] ${type} Status Response:`, data);
 
       if (data.state === 'failed') {
         console.error(`❌ Luma ${type} job ${jobId} failed: ${data.failure_reason}`);
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
       return data.state === 'completed' ? (type === 'Video' ? data.assets.video : data.assets.image) : null;
     }
 
-    // ✅ Fetch latest status from Luma API only if URLs are still missing
+    // ✅ Fetch latest status from Luma API **only if URLs are still missing**
     let updatedFirstImageUrl = first_image_url || await checkJobStatus(first_image_job_id, "First Image");
     let updatedLastImageUrl = last_image_url || await checkJobStatus(last_image_job_id, "Last Image");
     let updatedVideoUrl = video_url || (video_job_id ? await checkJobStatus(video_job_id, "Video") : null);
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
     const readyForVideo = !!(updatedFirstImageUrl && updatedLastImageUrl);
     const readyForMux = !!updatedVideoUrl;
 
-    console.log("📊 Status Update:", { 
+    console.log("📊 [Final Status Update]:", { 
       firstImageUrl: updatedFirstImageUrl, 
       lastImageUrl: updatedLastImageUrl, 
       videoUrl: updatedVideoUrl, 
@@ -79,8 +80,11 @@ export default async function handler(req, res) {
       readyForMux 
     });
 
-    // ✅ Update the database only if new values exist
-    if (updatedFirstImageUrl || updatedLastImageUrl || updatedVideoUrl) {
+    // ✅ Update the database **only if new values exist**
+    if (updatedFirstImageUrl !== first_image_url || 
+        updatedLastImageUrl !== last_image_url || 
+        updatedVideoUrl !== video_url) {
+      
       await sql`
         UPDATE gallery
         SET 
@@ -89,7 +93,8 @@ export default async function handler(req, res) {
           video_url = COALESCE(${updatedVideoUrl}, video_url)
         WHERE id = ${entryId};
       `;
-      console.log(`✅ Database Updated for entryId: ${entryId}`);
+
+      console.log(`✅ [${new Date().toISOString()}] Database Updated for entryId: ${entryId}`);
     }
 
     res.status(200).json({ 
