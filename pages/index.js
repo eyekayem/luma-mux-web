@@ -103,20 +103,22 @@ async function startImageGeneration() {
 
   // ✅ Poll for Image Completion
   async function pollForImages(entryId) {
-    console.log('🔄 Polling for image completion...', { entryId });
-    
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?entryId=${entryId}`);
-      const data = await response.json();
-
-      if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
-      if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
-
-      if (data.firstImageUrl && data.lastImageUrl) {
-        clearInterval(pollInterval);
-        startVideoGeneration(entryId);
-      }
-    }, 2000);
+      console.log('🔄 Polling for image completion...', { entryId });
+  
+      const pollInterval = setInterval(async () => {
+          const response = await fetch(`/api/status?entryId=${entryId}`);
+          const data = await response.json();
+  
+          console.log("📡 Poll Response (Image):", data);  // 🔥 Add Debugging Log
+  
+          if (data.firstImageUrl) setFirstImageUrl(data.firstImageUrl);
+          if (data.lastImageUrl) setLastImageUrl(data.lastImageUrl);
+  
+          if (data.firstImageUrl && data.lastImageUrl) {
+              clearInterval(pollInterval);
+              startVideoGeneration(entryId);
+          }
+      }, 2000);
   }
 
   // ✅ Start Video Generation
