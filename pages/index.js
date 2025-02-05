@@ -170,30 +170,33 @@ async function startVideoGeneration(entryId) {
     console.log("📡 Video Generation API Response:", videoData);
 
     if (videoData.videoJobId) {
-      pollForVideo(videoData.videoJobId, entryId);
+        console.log(`✅ Video job started! Polling for completion... Job ID: ${videoData.videoJobId}`);
+        pollForVideo(videoData.videoJobId, entryId);  // ✅ Call video polling
     } else {
-      console.error("❌ Video generation failed:", videoData.error);
-      setIsGenerating(false);
+        console.error("❌ Video generation failed:", videoData.error);
+        setIsGenerating(false);
     }
 }
 
 
+
 // ✅ Polls the status of the video job until the video is ready
 async function pollForVideo(videoJobId, entryId) {
-  console.log('🔄 Polling for video completion...', { videoJobId, entryId });
+  console.log('🔄 Polling for video completion...');
 
   const pollInterval = setInterval(async () => {
-    const response = await fetch(`/api/status?entryId=${entryId}&videoJobId=${videoJobId}`);
+    const response = await fetch(`/api/status?entryId=${entryId}`);
     const data = await response.json();
 
     console.log("📡 Poll Response (Video):", data);
 
-    if (data.videoUrl) {
+    if (data.videoUrl && data.videoUrl !== "pending") {
       clearInterval(pollInterval);
       startMuxUpload(data.videoUrl, entryId);
     }
   }, 2000);
 }
+
 
 
   return (
