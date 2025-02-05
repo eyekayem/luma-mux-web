@@ -178,20 +178,23 @@ async function startVideoGeneration(entryId) {
 }
 
 
-  // ✅ Poll for Video Completion
-  async function pollForVideo(videoJobId, entryId) {
-    console.log('🔄 Polling for video completion...');
-    
-    const pollInterval = setInterval(async () => {
-      const response = await fetch(`/api/status?videoJobId=${videoJobId}`);
-      const data = await response.json();
-      
-      if (data.videoUrl) {
-        clearInterval(pollInterval);
-        setMuxPlaybackId(data.videoUrl);
-      }
-    }, 2000);
-  }
+// ✅ Polls the status of the video job until the video is ready
+async function pollForVideo(videoJobId, entryId) {
+  console.log('🔄 Polling for video completion...', { videoJobId, entryId });
+
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(`/api/status?entryId=${entryId}&videoJobId=${videoJobId}`);
+    const data = await response.json();
+
+    console.log("📡 Poll Response (Video):", data);
+
+    if (data.videoUrl) {
+      clearInterval(pollInterval);
+      startMuxUpload(data.videoUrl, entryId);
+    }
+  }, 2000);
+}
+
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
