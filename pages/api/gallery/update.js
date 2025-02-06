@@ -9,7 +9,15 @@ export default async function handler(req, res) {
 
   try {
     // ✅ Extract fields from request body
-    let { entryId, firstImagePrompt, lastImagePrompt, videoPrompt } = req.body;
+    let { 
+      entryId, 
+      firstImagePrompt, 
+      lastImagePrompt, 
+      videoPrompt, 
+      muxPlaybackId, 
+      muxPlaybackUrl, 
+      muxJobId 
+    } = req.body;
 
     // ✅ Convert entryId to an integer
     entryId = parseInt(entryId, 10);
@@ -22,8 +30,18 @@ export default async function handler(req, res) {
       // 🔥 **Create a new entry**
       console.log("🆕 Creating new gallery entry...");
       const result = await sql`
-        INSERT INTO gallery (first_image_prompt, last_image_prompt, video_prompt, first_image_url, last_image_url, mux_playback_id)
-        VALUES (${firstImagePrompt || 'pending'}, ${lastImagePrompt || 'pending'}, ${videoPrompt || 'pending'}, 'pending', 'pending', 'waiting')
+        INSERT INTO gallery (
+          first_image_prompt, last_image_prompt, video_prompt, 
+          first_image_url, last_image_url, mux_playback_id, 
+          mux_playback_url, mux_job_id
+        )
+        VALUES (
+          ${firstImagePrompt || 'pending'}, 
+          ${lastImagePrompt || 'pending'}, 
+          ${videoPrompt || 'pending'}, 
+          'pending', 'pending', 'waiting', 
+          NULL, NULL
+        )
         RETURNING id;
       `;
 
@@ -38,6 +56,9 @@ export default async function handler(req, res) {
       if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
       if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
       if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
+      if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
+      if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
+      if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
 
       if (updates.length === 0) {
         console.warn("⚠️ No valid fields provided for update.");
