@@ -51,26 +51,23 @@ export default async function handler(req, res) {
       // 🔄 **Update an existing entry**
       console.log(`🔄 Updating gallery entry ${entryId}...`);
 
-      // ✅ Construct dynamic SQL update only for provided fields
+      // ✅ Construct update query manually
       const updates = [];
-      if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
-      if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
-      if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
-      if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
-      if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
-      if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
+      if (firstImagePrompt) updates.push(`first_image_prompt = '${firstImagePrompt}'`);
+      if (lastImagePrompt) updates.push(`last_image_prompt = '${lastImagePrompt}'`);
+      if (videoPrompt) updates.push(`video_prompt = '${videoPrompt}'`);
+      if (muxPlaybackId) updates.push(`mux_playback_id = '${muxPlaybackId}'`);
+      if (muxPlaybackUrl) updates.push(`mux_playback_url = '${muxPlaybackUrl}'`);
+      if (muxJobId) updates.push(`mux_job_id = '${muxJobId}'`);
 
       if (updates.length === 0) {
         console.warn("⚠️ No valid fields provided for update.");
         return res.status(400).json({ error: "No fields to update" });
       }
 
-      const result = await sql`
-        UPDATE gallery
-        SET ${sql.join(updates, sql`, `)}
-        WHERE id = ${entryId}
-        RETURNING id;
-      `;
+      // ✅ Use string template for SQL update
+      const updateQuery = `UPDATE gallery SET ${updates.join(", ")} WHERE id = ${entryId} RETURNING id;`;
+      const result = await sql`${sql.raw(updateQuery)}`;
 
       if (result.rows.length === 0) {
         console.error(`❌ No entry found for ID: ${entryId}`);
