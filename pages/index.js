@@ -18,7 +18,7 @@ export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState(null);
-  const [muxPlaybackUrl, setMuxPlaybackUrl] = useState(null);  // ✅ Renamed
+  const [muxPlaybackUrl, setMuxPlaybackUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
@@ -36,7 +36,7 @@ export default function Home() {
         setFirstImageUrl(data.firstImageUrl || null);
         setLastImageUrl(data.lastImageUrl || null);
         setMuxPlaybackId(data.muxPlaybackId || null);  // ✅ Ensure this field is set
-        setMuxVideoUrl(data.muxPlaybackUrl || null);   // ✅ Ensure correct URL is stored
+        setMuxPlaybackUrl(data.muxPlaybackUrl || null);   // ✅ Ensure correct URL is stored
   
         console.log("🎥 Mux Playback ID Set:", data.muxPlaybackId);
         console.log("🎞 Mux Playback URL Set:", data.muxPlaybackUrl);
@@ -197,10 +197,31 @@ async function startMuxUpload(videoUrl, entryId) {
     const data = await response.json();
     console.log("📡 Mux Upload Response:", data);
 
-    if (!data.playbackId) {
-      console.error("❌ Mux Upload Failed: No Playback ID Returned");
-      return;
+    if (data.playbackId) {
+        console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+    
+        const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
+    
+        // ✅ Update the state immediately
+        setMuxPlaybackId(data.playbackId);
+        setMuxPlaybackUrl(muxPlaybackUrl);
+        setMuxVideoUrl(muxPlaybackUrl); // ✅ This ensures the player displays
+    
+        // ✅ Update the database
+        await fetch('/api/gallery/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryId, muxPlaybackId: data.playbackId, muxPlaybackUrl }),
+        });
+    
+        console.log("✅ Database Updated with Mux Playback URL:", muxPlaybackUrl);
+    
+        // ✅ Trigger work panel refresh
+        fetchWorkPanel();
+    } else {
+        console.error("❌ Error uploading video to Mux:", data.error);
     }
+
 
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
