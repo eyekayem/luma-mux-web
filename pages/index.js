@@ -54,7 +54,7 @@ async function startImageGeneration() {
 
   console.log('🚀 Creating gallery entry in database...');
 
-  const response = await fetch('/api/gallery/create', {
+  const response = await fetch('/api/gallery/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
