@@ -51,23 +51,27 @@ export default async function handler(req, res) {
       // 🔄 **Update an existing entry**
       console.log(`🔄 Updating gallery entry ${entryId}...`);
 
-      // ✅ Construct update query manually
-      const updates = [];
-      if (firstImagePrompt) updates.push(`first_image_prompt = '${firstImagePrompt}'`);
-      if (lastImagePrompt) updates.push(`last_image_prompt = '${lastImagePrompt}'`);
-      if (videoPrompt) updates.push(`video_prompt = '${videoPrompt}'`);
-      if (muxPlaybackId) updates.push(`mux_playback_id = '${muxPlaybackId}'`);
-      if (muxPlaybackUrl) updates.push(`mux_playback_url = '${muxPlaybackUrl}'`);
-      if (muxJobId) updates.push(`mux_job_id = '${muxJobId}'`);
+      // ✅ Build query dynamically
+      const fieldsToUpdate = {};
+      if (firstImagePrompt) fieldsToUpdate.first_image_prompt = firstImagePrompt;
+      if (lastImagePrompt) fieldsToUpdate.last_image_prompt = lastImagePrompt;
+      if (videoPrompt) fieldsToUpdate.video_prompt = videoPrompt;
+      if (muxPlaybackId) fieldsToUpdate.mux_playback_id = muxPlaybackId;
+      if (muxPlaybackUrl) fieldsToUpdate.mux_playback_url = muxPlaybackUrl;
+      if (muxJobId) fieldsToUpdate.mux_job_id = muxJobId;
 
-      if (updates.length === 0) {
+      if (Object.keys(fieldsToUpdate).length === 0) {
         console.warn("⚠️ No valid fields provided for update.");
         return res.status(400).json({ error: "No fields to update" });
       }
 
-      // ✅ Use string template for SQL update
-      const updateQuery = `UPDATE gallery SET ${updates.join(", ")} WHERE id = ${entryId} RETURNING id;`;
-      const result = await sql`${sql.raw(updateQuery)}`;
+      // ✅ Run SQL query with only the fields that need updating
+      const result = await sql`
+        UPDATE gallery
+        SET ${sql(Object.entries(fieldsToUpdate).map(([key, value]) => sql`${sql.identifier([key])} = ${value}`))}
+        WHERE id = ${entryId}
+        RETURNING id;
+      `;
 
       if (result.rows.length === 0) {
         console.error(`❌ No entry found for ID: ${entryId}`);
