@@ -177,7 +177,7 @@ export default function Home() {
     }, 2000);
   }
 
-// ✅ Uploads video to Mux & Polls for playback ID
+// ✅ Uploads video to Mux & Updates Database
 async function startMuxUpload(videoUrl, entryId) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
@@ -188,56 +188,31 @@ async function startMuxUpload(videoUrl, entryId) {
       body: JSON.stringify({ videoUrl }),
     });
 
-    let data = await response.json();
+    const data = await response.json();
     console.log("📡 Mux Upload Response:", data);
 
-    if (!data.muxJobId) {
-      console.error("❌ Mux Upload Failed: No Job ID Returned.");
+    if (!data.playbackId) {
+      console.error("❌ Mux Upload Failed: No Playback ID Returned.");
       return;
     }
 
-    console.log("✅ Mux Upload Started, Job ID:", data.muxJobId);
+    console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
-    // ✅ Store `mux_job_id` immediately in the database
+    // ✅ Construct Mux Playback URL
+    const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
+
+    // ✅ Update the database with Playback ID and URL
     await fetch('/api/gallery/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entryId, muxJobId: data.muxJobId }),
+      body: JSON.stringify({ 
+        entryId, 
+        mux_playback_id: data.playbackId, 
+        mux_playback_url: muxPlaybackUrl 
+      }),
     });
 
-    // ✅ Poll for `mux_playback_id`
-    let playbackId = null;
-    for (let attempt = 0; attempt < 10; attempt++) { // Retry up to 10 times
-      console.log(`🔄 Checking for Mux playback ID... Attempt ${attempt + 1}`);
-
-      const statusResponse = await fetch(`/api/mux-status?jobId=${data.muxJobId}`);
-      const statusData = await statusResponse.json();
-      
-      if (statusData.playbackId) {
-        playbackId = statusData.playbackId;
-        console.log("✅ Mux Playback ID found:", playbackId);
-        break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s between checks
-    }
-
-    if (!playbackId) {
-      console.error("❌ Mux Playback ID not found after retries.");
-      return;
-    }
-
-    // ✅ Generate playback URL
-    const muxPlaybackUrl = `https://stream.mux.com/${playbackId}.m3u8`;
-
-    // ✅ Store playback ID & URL
-    await fetch('/api/gallery/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entryId, muxPlaybackId: playbackId, muxPlaybackUrl }),
-    });
-
-    console.log("✅ Database Updated with Mux Playback URL:", muxPlaybackUrl);
+    console.log("✅ Database Updated: ", { muxPlaybackId: data.playbackId, muxPlaybackUrl });
 
   } catch (error) {
     console.error("❌ Error in startMuxUpload:", error);
