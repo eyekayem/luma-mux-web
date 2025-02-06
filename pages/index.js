@@ -192,7 +192,7 @@ async function startMuxUpload(videoUrl, entryId) {
     console.log("📡 Mux Upload Response:", data);
 
     if (!data.playbackId) {
-      console.error("❌ Mux Upload Failed: No Playback ID Returned.");
+      console.error("❌ Mux Upload Failed: No Playback ID Returned");
       return;
     }
 
@@ -201,18 +201,32 @@ async function startMuxUpload(videoUrl, entryId) {
     // ✅ Construct Mux Playback URL
     const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
 
-    // ✅ Update the database with Playback ID and URL
-    await fetch('/api/gallery/update', {
+    if (!entryId) {
+      console.error("❌ Missing entryId in startMuxUpload, cannot update DB.");
+      return;
+    }
+
+    // ✅ Ensure correct data before making the request
+    const updatePayload = {
+      entryId,
+      muxPlaybackId: data.playbackId,
+      muxPlaybackUrl,
+    };
+
+    console.log("📡 Sending database update:", updatePayload);
+
+    const updateResponse = await fetch('/api/gallery/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        entryId, 
-        mux_playback_id: data.playbackId, 
-        mux_playback_url: muxPlaybackUrl 
-      }),
+      body: JSON.stringify(updatePayload),
     });
 
-    console.log("✅ Database Updated: ", { muxPlaybackId: data.playbackId, muxPlaybackUrl });
+    const updateData = await updateResponse.json();
+    if (updateResponse.ok) {
+      console.log("✅ Database Updated Successfully:", updateData);
+    } else {
+      console.error("❌ Database Update Failed:", updateData.error);
+    }
 
   } catch (error) {
     console.error("❌ Error in startMuxUpload:", error);
