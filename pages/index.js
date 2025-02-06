@@ -197,31 +197,10 @@ async function startMuxUpload(videoUrl, entryId) {
     const data = await response.json();
     console.log("📡 Mux Upload Response:", data);
 
-    if (data.playbackId) {
-        console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
-    
-        const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
-    
-        // ✅ Update the state immediately
-        setMuxPlaybackId(data.playbackId);
-        setMuxPlaybackUrl(muxPlaybackUrl);
-        setMuxVideoUrl(muxPlaybackUrl); // ✅ This ensures the player displays
-    
-        // ✅ Update the database
-        await fetch('/api/gallery/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entryId, muxPlaybackId: data.playbackId, muxPlaybackUrl }),
-        });
-    
-        console.log("✅ Database Updated with Mux Playback URL:", muxPlaybackUrl);
-    
-        // ✅ Trigger work panel refresh
-        fetchWorkPanel();
-    } else {
-        console.error("❌ Error uploading video to Mux:", data.error);
+    if (!data.playbackId) {
+      console.error("❌ Mux Upload Failed: No Playback ID Returned");
+      return;
     }
-
 
     console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
 
@@ -251,19 +230,21 @@ async function startMuxUpload(videoUrl, entryId) {
     const updateData = await updateResponse.json();
     if (updateResponse.ok) {
       console.log("✅ Database Updated Successfully:", updateData);
+      
+      // ✅ Update Work Panel State
+      setMuxPlaybackId(data.playbackId);
+      setMuxPlaybackUrl(muxPlaybackUrl);
+
+      // ✅ Force Work Panel Refresh After Mux Upload
+      setTimeout(() => {
+        console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
+        setCurrentEntryId(null);  // Reset
+        setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
+      }, 1000);
+      
     } else {
       console.error("❌ Database Update Failed:", updateData.error);
     }
-
-    console.log("✅ Database Updated: ", { muxJobId: data.muxJobId, muxPlaybackUrl });
-
-    // ✅ Force Work Panel Refresh After Mux Upload
-    setTimeout(() => {
-      console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
-      setCurrentEntryId(null);  // Reset
-      setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
-    }, 1000); // Short delay to let DB update
-    
   } catch (error) {
     console.error("❌ Error in startMuxUpload:", error);
   }
