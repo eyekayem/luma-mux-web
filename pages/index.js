@@ -42,10 +42,6 @@ export default function Home() {
       }
     }
 
-  fetchWorkPanel();
-}, [currentEntryId]); // ✅ Only runs when entryId changes
-
-
     fetchWorkPanel();
   }, [currentEntryId]); // ✅ Only runs when entryId changes
 
