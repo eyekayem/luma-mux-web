@@ -268,7 +268,7 @@ async function startMuxUpload(videoUrl, entryId) {
         <div className="flex flex-col items-center space-y-4">
           {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg" />}
           {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
-          {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackUrl} />}
+          {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
         </div>
   
       </div>
