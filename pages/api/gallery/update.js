@@ -1,7 +1,7 @@
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
-  console.log("📝 Incoming Request:", req.body); // ✅ Log request body
+  console.log("📝 Incoming Request:", req.body);
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -51,24 +51,24 @@ export default async function handler(req, res) {
       // 🔄 **Update an existing entry**
       console.log(`🔄 Updating gallery entry ${entryId}...`);
 
-      // ✅ Build query dynamically
-      const fieldsToUpdate = {};
-      if (firstImagePrompt) fieldsToUpdate.first_image_prompt = firstImagePrompt;
-      if (lastImagePrompt) fieldsToUpdate.last_image_prompt = lastImagePrompt;
-      if (videoPrompt) fieldsToUpdate.video_prompt = videoPrompt;
-      if (muxPlaybackId) fieldsToUpdate.mux_playback_id = muxPlaybackId;
-      if (muxPlaybackUrl) fieldsToUpdate.mux_playback_url = muxPlaybackUrl;
-      if (muxJobId) fieldsToUpdate.mux_job_id = muxJobId;
+      // ✅ Create an array of SQL updates
+      const updates = [];
+      if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
+      if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
+      if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
+      if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
+      if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
+      if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
 
-      if (Object.keys(fieldsToUpdate).length === 0) {
+      if (updates.length === 0) {
         console.warn("⚠️ No valid fields provided for update.");
         return res.status(400).json({ error: "No fields to update" });
       }
 
-      // ✅ Run SQL query with only the fields that need updating
+      // ✅ Run SQL query with only provided fields
       const result = await sql`
         UPDATE gallery
-        SET ${sql(Object.entries(fieldsToUpdate).map(([key, value]) => sql`${sql.identifier([key])} = ${value}`))}
+        SET ${sql.join(updates, sql`, `)}
         WHERE id = ${entryId}
         RETURNING id;
       `;
