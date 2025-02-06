@@ -22,8 +22,8 @@ export default async function handler(req, res) {
       // 🔥 **Create a new entry**
       console.log("🆕 Creating new gallery entry...");
       const result = await sql`
-        INSERT INTO gallery (first_image_prompt, last_image_prompt, video_prompt, first_image_url, last_image_url, mux_playback_id)
-        VALUES (${firstImagePrompt || 'pending'}, ${lastImagePrompt || 'pending'}, ${videoPrompt || 'pending'}, 'pending', 'pending', 'waiting')
+        INSERT INTO gallery (first_image_prompt, last_image_prompt, video_prompt, first_image_url, last_image_url, mux_playback_id, mux_playback_url, mux_job_id)
+        VALUES (${firstImagePrompt || 'pending'}, ${lastImagePrompt || 'pending'}, ${videoPrompt || 'pending'}, 'pending', 'pending', 'waiting', NULL, NULL)
         RETURNING id;
       `;
 
@@ -33,27 +33,33 @@ export default async function handler(req, res) {
       // 🔄 **Update an existing entry**
       console.log(`🔄 Updating gallery entry ${entryId}...`);
 
-      if (firstImagePrompt) {
-        await sql`UPDATE gallery SET first_image_prompt = ${firstImagePrompt} WHERE id = ${entryId}`;
-      }
-      if (lastImagePrompt) {
-        await sql`UPDATE gallery SET last_image_prompt = ${lastImagePrompt} WHERE id = ${entryId}`;
-      }
-      if (videoPrompt) {
-        await sql`UPDATE gallery SET video_prompt = ${videoPrompt} WHERE id = ${entryId}`;
-      }
-      if (muxPlaybackId) {
-        await sql`UPDATE gallery SET mux_playback_id = ${muxPlaybackId} WHERE id = ${entryId}`;
-      }
-      if (muxPlaybackUrl) {
-        await sql`UPDATE gallery SET mux_playback_url = ${muxPlaybackUrl} WHERE id = ${entryId}`;
-      }
-      if (muxJobId) {
-        await sql`UPDATE gallery SET mux_job_id = ${muxJobId} WHERE id = ${entryId}`;
+      const updates = [];
+      if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
+      if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
+      if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
+      if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
+      if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
+      if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
+
+      if (updates.length === 0) {
+        console.warn("⚠️ No valid fields provided for update.");
+        return res.status(400).json({ error: "No fields to update" });
       }
 
-      console.log("✅ Gallery entry updated:", entryId);
-      return res.status(200).json({ entryId });
+      const result = await sql`
+        UPDATE gallery
+        SET ${sql.join(updates, sql`, `)}
+        WHERE id = ${entryId}
+        RETURNING id;
+      `;
+
+      if (result.rows.length === 0) {
+        console.error(`❌ No entry found for ID: ${entryId}`);
+        return res.status(404).json({ error: 'Entry not found' });
+      }
+
+      console.log("✅ Gallery entry updated:", result.rows[0].id);
+      return res.status(200).json({ entryId: result.rows[0].id });
     }
   } catch (error) {
     console.error("❌ Error handling gallery entry:", error);
