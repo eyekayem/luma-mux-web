@@ -35,15 +35,20 @@ export default function Home() {
   
         setFirstImageUrl(data.firstImageUrl || null);
         setLastImageUrl(data.lastImageUrl || null);
-        setMuxPlaybackId(data.videoUrl || null);
-        setMuxPlaybackUrl(data.videoUrl ? `https://stream.mux.com/${data.videoUrl}.m3u8` : null);
+        setMuxPlaybackId(data.muxPlaybackId || null);  // ✅ Ensure this field is set
+        setMuxVideoUrl(data.muxPlaybackUrl || null);   // ✅ Ensure correct URL is stored
+  
+        console.log("🎥 Mux Playback ID Set:", data.muxPlaybackId);
+        console.log("🎞 Mux Playback URL Set:", data.muxPlaybackUrl);
+  
       } catch (error) {
         console.error("❌ Failed to fetch Work Panel data:", error);
       }
     }
-
+  
     fetchWorkPanel();
-  }, [currentEntryId]); // ✅ Only runs when entryId changes
+  }, [currentEntryId]); 
+
 
   // ✅ Start Image Generation
   async function startImageGeneration() {
