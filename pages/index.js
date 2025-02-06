@@ -23,37 +23,27 @@ export default function Home() {
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
 
-  // ✅ Fetch Shared Gallery & Load Work Panel State on Page Load
-  useEffect(() => {
-    async function fetchGallery() {
-      try {
-        console.log("📡 Fetching shared gallery...");
-        const response = await fetch('/api/gallery');
-        const data = await response.json();
-        setGallery(data.gallery || []);
-      } catch (error) {
-        console.error("❌ Failed to fetch gallery:", error);
-        setGallery([]);
-      }
+// ✅ Load Work Panel from Database when entryId changes
+useEffect(() => {
+  async function fetchWorkPanel() {
+    if (!currentEntryId) return;
+
+    console.log(`📡 Fetching Work Panel Data for entryId: ${currentEntryId}`);
+    try {
+      const response = await fetch(`/api/status?entryId=${currentEntryId}`);
+      const data = await response.json();
+
+      setFirstImageUrl(data.firstImageUrl || null);
+      setLastImageUrl(data.lastImageUrl || null);
+      setMuxPlaybackId(data.videoUrl || null);
+    } catch (error) {
+      console.error("❌ Failed to fetch Work Panel data:", error);
     }
+  }
 
-    fetchGallery();
+  fetchWorkPanel();
+}, [currentEntryId]); // ✅ Only runs when entryId changes
 
-    // ✅ Load Work Panel from Local Storage
-    const storedWorkPanel = JSON.parse(localStorage.getItem('workPanel')) || defaultWorkPanel;
-    setFirstImagePrompt(storedWorkPanel.firstImagePrompt);
-    setLastImagePrompt(storedWorkPanel.lastImagePrompt);
-    setVideoPrompt(storedWorkPanel.videoPrompt);
-  }, []);
-
-  // ✅ Save Work Panel to Local Storage (Debounced)
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      localStorage.setItem('workPanel', JSON.stringify({ firstImagePrompt, lastImagePrompt, videoPrompt }));
-    }, 500);
-
-    return () => clearTimeout(timeout);
-  }, [firstImagePrompt, lastImagePrompt, videoPrompt]);
 
   // ✅ Start Image Generation
 async function startImageGeneration() {
