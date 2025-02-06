@@ -213,13 +213,37 @@ export default function Home() {
     }
   }
 
+  // ✅ Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       {/* Work Panel */}
       <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
-        <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={startImageGeneration} disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate"}
-        </button>
+        <div className="space-y-4">
+          <h1 className="text-3xl font-bold text-center">Kinoprompt.bklt.ai</h1>
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)}
+            placeholder="First Frame Description" 
+          />
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)}
+            placeholder="Last Frame Description" 
+          />
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)}
+            placeholder="Camera Move / Shot Action" 
+          />
+          <button className="w-full p-3 bg-blue-600 rounded-lg"
+            onClick={startImageGeneration} disabled={isGenerating}>
+            {isGenerating ? "Generating..." : "Generate"}
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ Display Images When Available */}
+      <div className="w-full max-w-5xl mt-6 grid grid-cols-3 gap-4">
+        {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg" />}
+        {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
+        {muxPlaybackId && <VideoPlayer playbackId={muxPlaybackId} />}
       </div>
     </div>
   );
