@@ -177,41 +177,72 @@ export default function Home() {
     }, 2000);
   }
 
-  // ✅ Upload to Mux
-  async function startMuxUpload(videoUrl, entryId) {
-    console.log("🚀 Uploading video to Mux:", videoUrl);
+// ✅ Uploads video to Mux & Polls for playback ID
+async function startMuxUpload(videoUrl, entryId) {
+  console.log("🚀 Uploading video to Mux:", videoUrl);
 
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl }),
-      });
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl }),
+    });
 
-      const data = await response.json();
-      console.log("📡 Mux Upload Response:", data);
+    let data = await response.json();
+    console.log("📡 Mux Upload Response:", data);
 
-      if (!data.muxJobId) {
-        console.error("❌ Mux Upload Failed: No Job ID Returned");
-        return;
+    if (!data.muxJobId) {
+      console.error("❌ Mux Upload Failed: No Job ID Returned.");
+      return;
+    }
+
+    console.log("✅ Mux Upload Started, Job ID:", data.muxJobId);
+
+    // ✅ Store `mux_job_id` immediately in the database
+    await fetch('/api/gallery/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entryId, muxJobId: data.muxJobId }),
+    });
+
+    // ✅ Poll for `mux_playback_id`
+    let playbackId = null;
+    for (let attempt = 0; attempt < 10; attempt++) { // Retry up to 10 times
+      console.log(`🔄 Checking for Mux playback ID... Attempt ${attempt + 1}`);
+
+      const statusResponse = await fetch(`/api/mux-status?jobId=${data.muxJobId}`);
+      const statusData = await statusResponse.json();
+      
+      if (statusData.playbackId) {
+        playbackId = statusData.playbackId;
+        console.log("✅ Mux Playback ID found:", playbackId);
+        break;
       }
 
-      console.log("✅ Mux Upload Started, Job ID:", data.muxJobId);
-
-      const muxPlaybackUrl = data.playbackId ? `https://stream.mux.com/${data.playbackId}.m3u8` : null;
-
-      await fetch('/api/gallery/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryId, muxJobId: data.muxJobId, muxPlaybackUrl }),
-      });
-
-      console.log("✅ Database Updated: ", { muxJobId: data.muxJobId, muxPlaybackUrl });
-
-    } catch (error) {
-      console.error("❌ Error in startMuxUpload:", error);
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s between checks
     }
+
+    if (!playbackId) {
+      console.error("❌ Mux Playback ID not found after retries.");
+      return;
+    }
+
+    // ✅ Generate playback URL
+    const muxPlaybackUrl = `https://stream.mux.com/${playbackId}.m3u8`;
+
+    // ✅ Store playback ID & URL
+    await fetch('/api/gallery/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entryId, muxPlaybackId: playbackId, muxPlaybackUrl }),
+    });
+
+    console.log("✅ Database Updated with Mux Playback URL:", muxPlaybackUrl);
+
+  } catch (error) {
+    console.error("❌ Error in startMuxUpload:", error);
   }
+}
 
   // ✅ Render UI
   return (
