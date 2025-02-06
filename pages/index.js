@@ -18,7 +18,7 @@ export default function Home() {
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState(null);
-  const [muxVideoUrl, setMuxVideoUrl] = useState(null);
+  const [muxPlaybackUrl, setMuxPlaybackUrl] = useState(null);  // ✅ Renamed
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
@@ -27,19 +27,24 @@ export default function Home() {
   useEffect(() => {
     async function fetchWorkPanel() {
       if (!currentEntryId) return;
-
+  
       console.log(`📡 Fetching Work Panel Data for entryId: ${currentEntryId}`);
       try {
         const response = await fetch(`/api/status?entryId=${currentEntryId}`);
         const data = await response.json();
-
+  
         setFirstImageUrl(data.firstImageUrl || null);
         setLastImageUrl(data.lastImageUrl || null);
         setMuxPlaybackId(data.videoUrl || null);
+        setMuxPlaybackUrl(data.videoUrl ? `https://stream.mux.com/${data.videoUrl}.m3u8` : null);
       } catch (error) {
         console.error("❌ Failed to fetch Work Panel data:", error);
       }
     }
+
+  fetchWorkPanel();
+}, [currentEntryId]); // ✅ Only runs when entryId changes
+
 
     fetchWorkPanel();
   }, [currentEntryId]); // ✅ Only runs when entryId changes
