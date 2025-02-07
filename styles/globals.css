@@ -52,20 +52,23 @@ body {
   }
   .gallery-item {
     padding: 0.5rem; /* Reduce padding for mobile */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .gallery-item img {
     max-width: 100%; /* Ensure images are responsive */
   }
-  .button {
-    font-size: 0.875rem; /* Smaller font size for buttons */
-  }
-  .input {
-    font-size: 0.875rem; /* Smaller font size for inputs */
-  }
-  .action-container {
-    @apply w-full flex flex-col items-center;
-  }
   .down-carat {
-    @apply w-full text-center text-white;
+    @apply text-center text-white;
+    cursor: pointer;
+  }
+  .down-carat + div {
+    display: none;
+  }
+  .down-carat.active + div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 }
