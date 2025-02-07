@@ -50,6 +50,9 @@ body {
   .video-container {
     font-size: 0.875rem; /* Smaller font size for mobile */
   }
+  .gallery {
+    grid-template-columns: 1fr; /* Change to single column */
+  }
   .gallery-item {
     padding: 0.5rem; /* Reduce padding for mobile */
     display: flex;
