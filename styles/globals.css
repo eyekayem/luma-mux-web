@@ -44,3 +44,22 @@ body {
 .gallery-item button {
   @apply bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-3 rounded-lg mt-2 transition-all;
 }
+
+/* Custom styles for mobile */
+@media (max-width: 768px) {
+  .video-container {
+    font-size: 0.875rem; /* Smaller font size for mobile */
+  }
+  .gallery-item {
+    padding: 0.5rem; /* Reduce padding for mobile */
+  }
+  .gallery-item img {
+    max-width: 100%; /* Ensure images are responsive */
+  }
+  .button {
+    font-size: 0.875rem; /* Smaller font size for buttons */
+  }
+  .input {
+    font-size: 0.875rem; /* Smaller font size for inputs */
+  }
+}
