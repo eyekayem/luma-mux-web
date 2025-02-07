@@ -302,6 +302,13 @@ export default function Home() {
     }
   }
 
+  // Function to handle tweak button click
+  function handleTweak(entry) {
+    setFirstImagePrompt(entry.first_image_prompt);
+    setLastImagePrompt(entry.last_image_prompt);
+    setVideoPrompt(entry.video_prompt);
+  }
+
   // Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
@@ -358,6 +365,7 @@ export default function Home() {
               <p>{entry.first_image_prompt}</p>
               {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
               <p>{entry.last_image_prompt}</p>
+              <button className="button p-2 bg-green-600 rounded-lg" onClick={() => handleTweak(entry)}>Tweak</button>
             </div>
           </div>
         ))}
