@@ -296,8 +296,13 @@ return (
       {/* Left Side - Inputs */}
       <div className="space-y-4">
         <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
-          value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)}
+          value={firstImagePrompt} onChange={(e) => {
+            setFirstImagePrompt(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
           placeholder="First Frame Description"
+          style={{ overflow: 'hidden' }}
         />
         <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
         <div className="details">
@@ -305,8 +310,13 @@ return (
         </div>
 
         <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
-          value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)}
+          value={lastImagePrompt} onChange={(e) => {
+            setLastImagePrompt(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
           placeholder="Last Frame Description"
+          style={{ overflow: 'hidden' }}
         />
         <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
         <div className="details">
@@ -314,8 +324,13 @@ return (
         </div>
 
         <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
-          value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)}
+          value={videoPrompt} onChange={(e) => {
+            setVideoPrompt(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
           placeholder="Camera Move / Shot Action"
+          style={{ overflow: 'hidden' }}
         />
         <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
         <div className="details">
