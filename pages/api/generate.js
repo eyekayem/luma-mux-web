@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     );
     
     const firstImageData = await firstImageResponse.json();
-    console.log("📝 First Image Response:", firstImageData);
+    console.log("📝 First Image Response:", JSON.stringify(firstImageData, null, 2));
 
     if (!firstImageData.id) {
       throw new Error(`❌ Failed to create first image. Luma API Response: ${JSON.stringify(firstImageData)}`);
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     );
 
     const lastImageData = await lastImageResponse.json();
-    console.log("📝 Last Image Response:", lastImageData);
+    console.log("📝 Last Image Response:", JSON.stringify(lastImageData, null, 2));
 
     if (!lastImageData.id) {
       throw new Error(`❌ Failed to create last image. Luma API Response: ${JSON.stringify(lastImageData)}`);
