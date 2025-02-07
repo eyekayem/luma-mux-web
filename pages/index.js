@@ -284,6 +284,7 @@ export default function Home() {
   }
 
 // Render UI
+// Update the gallery section in the render UI function
 return (
   <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
     {/* Title */}
@@ -322,21 +323,37 @@ return (
 
     {/* GALLERY SECTION - Displays all past entries */}
     <div className="gallery">
-      {gallery.slice().reverse().map((entry) => (
+      {gallery.map((entry) => (
         <div key={entry.id} className="gallery-item">
-          <p className="text-sm text-gray-400">{entry.first_image_prompt}</p>
-          {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
-          <p className="text-sm text-gray-400 mt-2">{entry.last_image_prompt}</p>
-          {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
-          <p className="text-sm text-gray-400 mt-2">{entry.video_prompt}</p>
-          {entry.mux_playback_url && (
-            <div className="mt-4">
-              <VideoPlayer playbackId={entry.mux_playback_id} />
-            </div>
-          )}
+          <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
+          <p className="text-sm text-gray-400">{entry.video_prompt}</p>
+          <button className="w-full p-3 bg-blue-600 rounded-lg down-carat">▼</button>
+          <div className="hidden">
+            {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
+            <p>{entry.first_image_prompt}</p>
+            {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
+            <p>{entry.last_image_prompt}</p>
+            <button className="w-full p-3 bg-blue-600 rounded-lg">Edit</button>
+          </div>
         </div>
       ))}
     </div>
   </div>
 );
+
+// Add this function inside your component to toggle details visibility
+function toggleDetails(e) {
+  const carat = e.target;
+  const details = carat.nextElementSibling;
+  carat.classList.toggle('active');
+  details.classList.toggle('hidden');
+}
+
+// Update the down carat button in the gallery section to use the toggleDetails function
+<button
+  className="w-full p-3 bg-blue-600 rounded-lg down-carat"
+  onClick={toggleDetails}
+>
+  ▼
+</button>
 }
