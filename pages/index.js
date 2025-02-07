@@ -321,22 +321,21 @@ return (
 
     </div>
 
-    {/* GALLERY SECTION - Displays all past entries */}
-    <div className="gallery">
-      {gallery.map((entry) => (
-        <div key={entry.id} className="gallery-item">
-          <p className="text-sm text-gray-400">{entry.first_image_prompt}</p>
-          {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
-          <p className="text-sm text-gray-400 mt-2">{entry.last_image_prompt}</p>
-          {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
-          {entry.mux_playback_url && (
-            <div className="mt-4">
-              <VideoPlayer playbackId={entry.mux_playback_id} />
-            </div>
-          )}
-        </div>
-      )).reverse()}
-    </div>
-  </div>
-);
+  {/* GALLERY SECTION - Displays all past entries */}
+  <div className="gallery">
+    {gallery.slice().reverse().map((entry) => (
+      <div key={entry.id} className="gallery-item">
+        <p className="text-sm text-gray-400">{entry.first_image_prompt}</p>
+        {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
+        <p className="text-sm text-gray-400 mt-2">{entry.last_image_prompt}</p>
+        {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
+        <p className="text-sm text-gray-400 mt-2">{entry.video_prompt}</p>
+        {entry.mux_playback_url && (
+          <div className="mt-4">
+            <VideoPlayer playbackId={entry.mux_playback_id} />
+          </div>
+        )}
+      </div>
+    ))}
+  </div>);
 }
