@@ -26,12 +26,13 @@ export default function VideoPlayer({ playbackId }) {
         id={`mux-player-${playbackId}`}
         playbackId={playbackId}
         metadataVideoTitle="Generated Video"
+        theme="minimal" // Set the theme to minimal
         primaryColor="#785ae2"
         secondaryColor="#000000"
         accentColor="#4a02cf"
         streamType="on-demand"
         autoPlay={false}
-        controls={true} // Enable default controls
+        controls={true}
         loop
         muted
         className="w-full h-full"
