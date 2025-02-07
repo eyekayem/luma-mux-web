@@ -28,9 +28,11 @@ export default async function handler(req, res) {
   try {
     const result = await sql`
       SELECT first_image_job_id, last_image_job_id, video_job_id, 
-             first_image_url, last_image_url, video_url
+             first_image_url, last_image_url, video_url,
+             mux_playback_id, mux_playback_url
       FROM gallery WHERE id = ${parsedEntryId}
     `;
+
 
     if (result.rows.length === 0) {
       console.error(`❌ No entry found for ID: ${parsedEntryId}`);
@@ -131,9 +133,12 @@ export default async function handler(req, res) {
       firstImageUrl: updatedFirstImageUrl, 
       lastImageUrl: updatedLastImageUrl, 
       videoUrl: updatedVideoUrl, 
+      muxPlaybackId: result.rows[0].mux_playback_id || null,  // ✅ Add Mux ID
+      muxPlaybackUrl: result.rows[0].mux_playback_url || null, // ✅ Add Mux URL
       readyForVideo, 
       readyForMux 
     });
+
   } catch (error) {
     console.error("❌ Error checking job status:", error);
     res.status(500).json({ error: error.message });
