@@ -62,4 +62,10 @@ body {
   .input {
     font-size: 0.875rem; /* Smaller font size for inputs */
   }
+  .action-container {
+    @apply w-full flex flex-col items-center;
+  }
+  .down-carat {
+    @apply w-full text-center text-white;
+  }
 }
