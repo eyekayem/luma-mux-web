@@ -29,51 +29,32 @@ export default async function handler(req, res) {
 
       console.log("✅ New gallery entry created:", result.rows[0].id);
       return res.status(200).json({ entryId: result.rows[0].id });
-    } 
-    
+    }
+
     // 🔄 **Update an existing entry**
     console.log(`🔄 Updating gallery entry ${entryId}...`);
 
     // ✅ Collect only fields that need to be updated
-    const updateFields = {};
-    if (firstImagePrompt) updateFields.first_image_prompt = firstImagePrompt;
-    if (lastImagePrompt) updateFields.last_image_prompt = lastImagePrompt;
-    if (videoPrompt) updateFields.video_prompt = videoPrompt;
-    if (muxPlaybackId) updateFields.mux_playback_id = muxPlaybackId;
-    if (muxPlaybackUrl) updateFields.mux_playback_url = muxPlaybackUrl;
-    if (muxJobId) updateFields.mux_job_id = muxJobId;
+    const updateFields = [];
+    const updateValues = [];
 
-    // ✅ Ensure there's something to update
-    if (Object.keys(updateFields).length === 0) {
-      console.warn("⚠️ No valid fields provided for update.");
-      return res.status(400).json({ error: "No fields to update" });
-    }
-
-    // ✅ Dynamically construct SET statement for SQL update
-    let updateFields = [];
-    let updateValues = [];
-    
     Object.entries(req.body).forEach(([key, value]) => {
       if (key !== 'entryId' && value !== undefined) {
         updateFields.push(`${key} = $${updateFields.length + 1}`);
         updateValues.push(value);
       }
     });
-    
+
     if (updateFields.length === 0) {
       console.warn("⚠️ No valid fields provided for update.");
       return res.status(400).json({ error: "No fields to update" });
     }
-    
-    updateValues.push(entryId); // Push entryId as the last parameter
-    
-    const result = await sql`
-      UPDATE gallery
-      SET ${sql.raw(updateFields.join(', '))}
-      WHERE id = ${entryId}
-      RETURNING id;
-    `;
 
+    updateValues.push(entryId); // Push entryId as the last parameter
+
+    // ✅ Execute SQL Update Query
+    const query = `UPDATE gallery SET ${updateFields.join(', ')} WHERE id = $${updateValues.length} RETURNING id;`;
+    const result = await sql.query(query, updateValues);
 
     if (result.rows.length === 0) {
       console.error(`❌ No entry found for ID: ${entryId}`);
