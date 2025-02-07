@@ -313,35 +313,38 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       <div className="text-center mb-6">
-        <p className="text-3xl font-bold">kinoprompt by bklt.ai - <a href="mailto:kenny@bklt.ai" className="underline">kenny@bklt.ai</a></p>
+        <p className="text-lg font-semibold">Prompt Trainer 0.5 - kenny@bklt.ai</p>
       </div>
       <div className="work-panel w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
         <div className="space-y-4">
-          <label className="text-sm text-gray-300">Begin</label>
+          <label className="text-base font-medium text-gray-300">Begin Frame</label>
           <TextAreaAutosize
             value={firstImagePrompt}
             onChange={(e) => setFirstImagePrompt(e.target.value)}
             placeholder="First Frame Description"
+            className="text-base p-2"
           />
           <div className="details">
             {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg mt-2" />}
           </div>
 
-          <label className="text-sm text-gray-300">End</label>
+          <label className="text-base font-medium text-gray-300">End Frame</label>
           <TextAreaAutosize
             value={lastImagePrompt}
             onChange={(e) => setLastImagePrompt(e.target.value)}
             placeholder="Last Frame Description"
+            className="text-base p-2"
           />
           <div className="details">
             {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg mt-2" />}
           </div>
 
-          <label className="text-sm text-gray-300">Action + Camera</label>
+          <label className="text-base font-medium text-gray-300">Action and Camera Control</label>
           <TextAreaAutosize
             value={videoPrompt}
             onChange={(e) => setVideoPrompt(e.target.value)}
             placeholder="Camera Move / Shot Action"
+            className="text-base p-2"
           />
           <div className="details">
             {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
