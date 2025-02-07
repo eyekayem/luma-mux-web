@@ -9,10 +9,12 @@ const pool = new Pool({
 // ✅ Handle API requests
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 6; // Default limit to 6 if not provided
     try {
       console.log("📡 Fetching shared gallery from database...");
       const result = await pool.query(
-        `SELECT * FROM gallery ORDER BY created_at DESC`
+        `SELECT * FROM gallery WHERE featured = 'Y' ORDER BY created_at DESC LIMIT $1`,
+        [limit]
       );
       res.status(200).json({ gallery: result.rows });
     } catch (error) {
@@ -31,8 +33,8 @@ export default async function handler(req, res) {
       }
 
       const result = await pool.query(
-        `INSERT INTO gallery (first_image_prompt, first_image_url, last_image_prompt, last_image_url, video_prompt, mux_playback_id)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        `INSERT INTO gallery (first_image_prompt, first_image_url, last_image_prompt, last_image_url, video_prompt, mux_playback_id, featured)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Y') RETURNING *`,
         [firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId]
       );
 
