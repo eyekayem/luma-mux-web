@@ -23,13 +23,18 @@ body {
   @apply w-full rounded-lg shadow-lg border border-gray-700;
 }
 
-/* Gallery styles */
 .gallery {
-  @apply flex flex-col gap-6 mt-8;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
 .gallery-item {
-  @apply bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 flex flex-col items-center text-center;
+  background: #2d2d2d;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
 }
 
 .gallery-item img {
