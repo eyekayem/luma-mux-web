@@ -49,6 +49,24 @@ export default function Home() {
     fetchWorkPanel();
   }, [currentEntryId]); 
 
+  // ✅ Load Gallery from Database on start
+  useEffect(() => {
+    async function fetchGallery() {
+      try {
+        console.log("📡 Fetching shared gallery...");
+        const response = await fetch('/api/gallery');
+        const data = await response.json();
+        setGallery(data.gallery || []);
+      } catch (error) {
+        console.error("❌ Failed to fetch gallery:", error);
+        setGallery([]);
+      }
+    }
+  
+    fetchGallery(); // ✅ Load gallery when the page loads
+  }, []);
+
+
 
   // ✅ Start Image Generation
   async function startImageGeneration() {
@@ -184,6 +202,7 @@ export default function Home() {
   }
 
 // ✅ Uploads video to Mux & Updates Database
+// ✅ Uploads video to Mux & Updates Database
 async function startMuxUpload(videoUrl, entryId) {
   console.log("🚀 Uploading video to Mux:", videoUrl);
 
@@ -199,6 +218,7 @@ async function startMuxUpload(videoUrl, entryId) {
 
     if (!data.playbackId) {
       console.error("❌ Mux Upload Failed: No Playback ID Returned");
+      setIsGenerating(false); // ✅ Reset button on failure
       return;
     }
 
@@ -209,6 +229,7 @@ async function startMuxUpload(videoUrl, entryId) {
 
     if (!entryId) {
       console.error("❌ Missing entryId in startMuxUpload, cannot update DB.");
+      setIsGenerating(false); // ✅ Reset button on failure
       return;
     }
 
@@ -230,6 +251,7 @@ async function startMuxUpload(videoUrl, entryId) {
 
     if (!update.ok) {
       console.error("❌ Database Update Failed:", await update.text());
+      setIsGenerating(false); // ✅ Reset button on failure
       return;
     }
 
@@ -240,19 +262,28 @@ async function startMuxUpload(videoUrl, entryId) {
     setMuxPlaybackId(data.playbackId);
     setMuxPlaybackUrl(muxPlaybackUrl);
 
+    // ✅ Reset Generating State **AFTER SUCCESS**
+    setIsGenerating(false);
+
     // ✅ Force Work Panel Refresh After Mux Upload
     setTimeout(() => {
       console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
       setCurrentEntryId(null);  // Reset
       setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
     }, 1000);
-    
+
+    // ✅ Refresh Gallery
+    fetchGallery();
+
   } catch (error) {
     console.error("❌ Error in startMuxUpload:", error);
+    setIsGenerating(false); // ✅ Reset button on failure
   }
 }
 
-  // ✅ Render UI
+}
+
+// ✅ Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       
@@ -290,7 +321,25 @@ async function startMuxUpload(videoUrl, entryId) {
         </div>
   
       </div>
+  
+      {/* ✅ GALLERY SECTION - Displays all past entries */}
+      <div className="w-full max-w-5xl mt-6 space-y-6">
+        {gallery.slice().reverse().map((entry) => (
+          <div key={entry.id} className="bg-gray-800 p-4 rounded-lg">
+            <p className="text-sm text-gray-400">{entry.first_image_prompt}</p>
+            {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
+            <p className="text-sm text-gray-400 mt-2">{entry.last_image_prompt}</p>
+            {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
+            {entry.mux_playback_url && (
+              <div className="mt-4">
+                <VideoPlayer playbackId={entry.mux_playback_id} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
+
 
 }
