@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
+import useMediaQuery from '../hooks/useMediaQuery';
 
 export default function Home() {
   console.log("🟢 App Loaded: Initializing States...");
@@ -10,7 +11,10 @@ export default function Home() {
     lastImagePrompt: 'Holding a hand mirror up and seeing that you are a clown.',
     videoPrompt: 'Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.',
   };
-
+  
+  // Custom hook to detect screen size
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
   // Work Panel States
   const [firstImagePrompt, setFirstImagePrompt] = useState(defaultWorkPanel.firstImagePrompt);
   const [lastImagePrompt, setLastImagePrompt] = useState(defaultWorkPanel.lastImagePrompt);
@@ -283,7 +287,7 @@ export default function Home() {
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
       
       {/* Title */}
-      <h1 className="text-3xl font-bold text-center mb-4">Kinoprompt.bklt.ai</h1>
+      <h1 className="text-3xl font-bold text-center mb-4">kinoprompt.bklt.ai</h1>
 
       {/* Work Panel */}
       <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
