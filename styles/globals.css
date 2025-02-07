@@ -74,4 +74,23 @@ body {
     flex-direction: column;
     align-items: center;
   }
+    /* New styles for mobile */
+  .work-panel {
+    grid-template-columns: 1fr; /* Change to single column */
+  }
+  .work-panel .input {
+    width: 100%; /* Full width inputs */
+  }
+  .carat {
+    display: block;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+  }
+  .carat + .details {
+    display: none;
+  }
+  .carat.active + .details {
+    display: block;
+  }
 }
