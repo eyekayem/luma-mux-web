@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     try {
       console.log("📡 Fetching shared gallery from database...");
       const result = await pool.query(
-        `SELECT * FROM gallery WHERE featured = 'Y' ORDER BY created_at DESC LIMIT $1`,
+        `SELECT * FROM featured_gallery LIMIT $1`,
         [limit]
       );
       res.status(200).json({ gallery: result.rows });
