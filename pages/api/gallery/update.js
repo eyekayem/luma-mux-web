@@ -50,15 +50,30 @@ export default async function handler(req, res) {
     }
 
     // ✅ Dynamically construct SET statement for SQL update
-    const setClauses = Object.entries(updateFields).map(([key, value]) => sql`${sql.raw(key)} = ${value}`);
-
-    // ✅ Execute the update query
+    let updateFields = [];
+    let updateValues = [];
+    
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (key !== 'entryId' && value !== undefined) {
+        updateFields.push(`${key} = $${updateFields.length + 1}`);
+        updateValues.push(value);
+      }
+    });
+    
+    if (updateFields.length === 0) {
+      console.warn("⚠️ No valid fields provided for update.");
+      return res.status(400).json({ error: "No fields to update" });
+    }
+    
+    updateValues.push(entryId); // Push entryId as the last parameter
+    
     const result = await sql`
       UPDATE gallery
-      SET ${sql.raw(setClauses.join(', '))}
+      SET ${sql.raw(updateFields.join(', '))}
       WHERE id = ${entryId}
       RETURNING id;
     `;
+
 
     if (result.rows.length === 0) {
       console.error(`❌ No entry found for ID: ${entryId}`);
