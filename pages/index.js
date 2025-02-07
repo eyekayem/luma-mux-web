@@ -284,7 +284,6 @@ export default function Home() {
   }
 
 // Render UI
-// Update the gallery section in the render UI function
 // Modify the work panel section in the render UI function
 return (
   <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
@@ -328,6 +327,23 @@ return (
           {isGenerating ? "Generating..." : "Generate"}
         </button>
       </div>
+    </div>
+
+    {/* Gallery Section */}
+    <div className="gallery w-full max-w-5xl mt-6">
+      {gallery.map((entry) => (
+        <div key={entry.id} className="gallery-item">
+          <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
+          <p className="text-sm text-gray-400">{entry.video_prompt}</p>
+          <button className="w-full p-3 bg-blue-600 rounded-lg down-carat" onClick={toggleDetails}>▼</button>
+          <div className="details">
+            {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
+            <p>{entry.first_image_prompt}</p>
+            {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
+            <p>{entry.last_image_prompt}</p>
+          </div>
+        </div>
+      ))}
     </div>
   </div>
 );
