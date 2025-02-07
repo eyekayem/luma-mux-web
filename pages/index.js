@@ -219,40 +219,34 @@ async function startMuxUpload(videoUrl, entryId) {
       muxPlaybackUrl,
     };
 
-    console.log("📡 Sending database update:", {
-      entryId,
-      muxPlaybackId: data.playbackId,
-      muxPlaybackUrl,
-    });
-    
-    await fetch('/api/gallery/update', {
+    console.log("📡 Sending database update:", updatePayload);
+
+    // ✅ Store the fetch response properly
+    const update = await fetch('/api/gallery/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entryId,
-        muxPlaybackId: data.playbackId,
-        muxPlaybackUrl,
-      }),
+      body: JSON.stringify(updatePayload),
     });
 
-    const updateData = await updateResponse.json();
-    if (updateResponse.ok) {
-      console.log("✅ Database Updated Successfully:", updateData);
-      
-      // ✅ Update Work Panel State
-      setMuxPlaybackId(data.playbackId);
-      setMuxPlaybackUrl(muxPlaybackUrl);
-
-      // ✅ Force Work Panel Refresh After Mux Upload
-      setTimeout(() => {
-        console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
-        setCurrentEntryId(null);  // Reset
-        setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
-      }, 1000);
-      
-    } else {
-      console.error("❌ Database Update Failed:", updateData.error);
+    if (!update.ok) {
+      console.error("❌ Database Update Failed:", await update.text());
+      return;
     }
+
+    const updateData = await update.json();
+    console.log("✅ Database Updated Successfully:", updateData);
+
+    // ✅ Update Work Panel State
+    setMuxPlaybackId(data.playbackId);
+    setMuxPlaybackUrl(muxPlaybackUrl);
+
+    // ✅ Force Work Panel Refresh After Mux Upload
+    setTimeout(() => {
+      console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
+      setCurrentEntryId(null);  // Reset
+      setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
+    }, 1000);
+    
   } catch (error) {
     console.error("❌ Error in startMuxUpload:", error);
   }
