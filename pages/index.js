@@ -168,12 +168,20 @@ export default function Home() {
       return;
     }
 
+    const firstImageUrl = data.firstImageUrl;
+    const lastImageUrl = data.lastImageUrl;
+
+    if (!isValidUrl(firstImageUrl) || !isValidUrl(lastImageUrl)) {
+      console.error("❌ Invalid Image URLs. Aborting video generation.");
+      return;
+    }
+
     console.log("📤 Sending video generation request with:", data);
 
     const videoResponse = await fetch('/api/generate-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entryId, firstImageUrl: data.firstImageUrl, lastImageUrl: data.lastImageUrl, videoPrompt }),
+      body: JSON.stringify({ entryId, firstImageUrl, lastImageUrl, videoPrompt }),
     });
 
     const videoData = await videoResponse.json();
@@ -281,6 +289,16 @@ export default function Home() {
     } catch (error) {
       console.error("❌ Error in startMuxUpload:", error);
       setIsGenerating(false);
+    }
+  }
+
+  // Function to validate URLs
+  function isValidUrl(url) {
+    try {
+      new URL(url);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
