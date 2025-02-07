@@ -8,7 +8,7 @@ export default function Home() {
   // Default Work Panel State
   const defaultWorkPanel = {
     firstImagePrompt: 'A fashion show for clowns, on the runway. Everyone in the audience is not a clown.',
-    lastImagePrompt: 'Holding a hand mirror up and seeing that you are a clown.',
+    lastImagePrompt: 'sitting in the front row of a fashion show for clowns, i hold up a makeup mirror and am totally suprised that I am a clown.',
     videoPrompt: 'Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.',
   };
   
@@ -27,6 +27,19 @@ export default function Home() {
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
 
+  // Define fetchGallery function
+  async function fetchGallery() {
+    try {
+      console.log("📡 Fetching shared gallery...");
+      const response = await fetch('/api/gallery?limit=6');
+      const data = await response.json();
+      setGallery(data.gallery || []);
+    } catch (error) {
+      console.error("❌ Failed to fetch gallery:", error);
+      setGallery([]);
+    }
+  }
+  
   // Load Work Panel from Database when entryId changes
   useEffect(() => {
     async function fetchWorkPanel() {
@@ -55,18 +68,6 @@ export default function Home() {
 
   // Load Gallery from Database on start
   useEffect(() => {
-    async function fetchGallery() {
-      try {
-        console.log("📡 Fetching shared gallery...");
-        const response = await fetch('/api/gallery');
-        const data = await response.json();
-        setGallery(data.gallery || []);
-      } catch (error) {
-        console.error("❌ Failed to fetch gallery:", error);
-        setGallery([]);
-      }
-    }
-
     fetchGallery();
   }, []);
 
