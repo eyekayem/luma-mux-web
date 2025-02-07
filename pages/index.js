@@ -300,7 +300,7 @@ return (
         />
         <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
           value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)}
-          placeholder "Last Frame Description"
+          placeholder="Last Frame Description"
         />
         <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
           value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)}
