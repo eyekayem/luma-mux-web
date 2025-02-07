@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   console.log('🟢 Starting media generation process');
 
-  const { entryId, firstImagePrompt, lastImagePrompt, videoPrompt } = req.body; // Assuming videoPrompt is also passed in the request body
+  const { entryId, firstImagePrompt, lastImagePrompt } = req.body;
   const LUMA_API_KEY = process.env.LUMA_API_KEY;
 
   if (!LUMA_API_KEY) {
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   async function requestMedia(prompt, type = 'image') {
     const maxDuration = 3 * 60 * 1000; // 3 minutes
     const startTime = Date.now();
-    const delay = type === 'image' ? 1000 : 3000; // 1 second for images, 3 seconds for videos
+    const delay = 1000; // 1 second for images
 
     while ((Date.now() - startTime) < maxDuration) {
       try {
@@ -66,36 +66,26 @@ export default async function handler(req, res) {
     console.log('📸 Requesting Last Image...');
     const lastImageData = await requestMedia(lastImagePrompt, 'image');
 
-    // Request Video Generation if videoPrompt is provided
-    let videoData;
-    if (videoPrompt) {
-      console.log('🎥 Requesting Video...');
-      videoData = await requestMedia(videoPrompt, 'video');
-    }
-
-    console.log("✅ Job IDs created:", { 
+    console.log("✅ Image Job IDs created:", { 
       firstImageJobId: firstImageData.id, 
-      lastImageJobId: lastImageData.id, 
-      ...(videoData && { videoJobId: videoData.id })
+      lastImageJobId: lastImageData.id 
     });
 
-    // Update the database with the job IDs
+    // Update the database with the image job IDs
     await sql`
       UPDATE gallery
       SET 
         first_image_job_id = ${firstImageData.id}, 
-        last_image_job_id = ${lastImageData.id},
-        ${videoData ? sql`video_job_id = ${videoData.id},` : sql``}
+        last_image_job_id = ${lastImageData.id}
       WHERE id = ${entryId};
     `;
 
-    console.log(`✅ Stored job IDs in DB for entryId: ${entryId}`);
+    console.log(`✅ Stored image job IDs in DB for entryId: ${entryId}`);
 
     // Return job IDs, polling will happen on the frontend
     res.status(200).json({
       firstImageJobId: firstImageData.id,
-      lastImageJobId: lastImageData.id,
-      ...(videoData && { videoJobId: videoData.id })
+      lastImageJobId: lastImageData.id
     });
 
   } catch (error) {
