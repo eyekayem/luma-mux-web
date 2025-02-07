@@ -305,10 +305,14 @@ export default function Home() {
   // Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-3xl font-bold text-center mb-4">kinoprompt.bklt.ai</h1>
-
+      <h1 className="text-3xl font-bold text-center mb-4">kinoprompt by bklt</h1>
+      <div className="text-center mb-6">
+        <p>Get in touch with <a href="mailto:kenny@bklt.ai" className="underline">kenny@bklt.ai</a></p>
+        <p><a href="https://linktr.ee/bklt.ai" className="underline">linktr.ee/bklt.ai</a></p>
+      </div>
       <div className="work-panel w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
         <div className="space-y-4">
+          <label className="text-sm text-gray-300">Begin</label>
           <TextAreaAutosize
             value={firstImagePrompt}
             onChange={(e) => setFirstImagePrompt(e.target.value)}
@@ -318,6 +322,7 @@ export default function Home() {
             {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg mt-2" />}
           </div>
 
+          <label className="text-sm text-gray-300">End</label>
           <TextAreaAutosize
             value={lastImagePrompt}
             onChange={(e) => setLastImagePrompt(e.target.value)}
@@ -327,6 +332,7 @@ export default function Home() {
             {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg mt-2" />}
           </div>
 
+          <label className="text-sm text-gray-300">Action + Camera</label>
           <TextAreaAutosize
             value={videoPrompt}
             onChange={(e) => setVideoPrompt(e.target.value)}
