@@ -59,8 +59,14 @@ body {
 
 /* Custom styles for mobile */
 @media (max-width: 768px) {
-  .video-container {
-    font-size: 0.875rem; /* Smaller font size for mobile */
+  .video-container video::-webkit-media-controls {
+    display: none !important;
+  }
+  .video-container video::-webkit-media-controls-overlay-play-button {
+    display: none !important;
+  }
+  .video-container video::-webkit-media-controls-start-playback-button {
+    display: none !important;
   }
   .gallery {
     grid-template-columns: 1fr; /* Change to single column */
