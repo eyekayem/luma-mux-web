@@ -38,12 +38,23 @@ export default async function handler(req, res) {
     const updateFields = [];
     const updateValues = [];
 
+    const fieldMap = {
+      firstImagePrompt: "first_image_prompt",
+      lastImagePrompt: "last_image_prompt",
+      videoPrompt: "video_prompt",
+      muxPlaybackId: "mux_playback_id",
+      muxPlaybackUrl: "mux_playback_url",
+      muxJobId: "mux_job_id"
+    };
+    
     Object.entries(req.body).forEach(([key, value]) => {
-      if (key !== 'entryId' && value !== undefined) {
-        updateFields.push(`${key} = $${updateFields.length + 1}`);
+      const columnName = fieldMap[key];
+      if (columnName && value !== undefined) {
+        updateFields.push(`${columnName} = $${updateFields.length + 1}`);
         updateValues.push(value);
       }
     });
+
 
     if (updateFields.length === 0) {
       console.warn("⚠️ No valid fields provided for update.");
