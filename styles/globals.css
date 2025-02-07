@@ -111,6 +111,6 @@ body {
 /* Custom styles for desktop */
 @media (min-width: 769px) {
   .gallery {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive columns */
+    grid-template-columns: repeat(3, 1fr); /* Limit to 3 columns */
   }
 }
