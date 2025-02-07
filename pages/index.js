@@ -219,12 +219,20 @@ async function startMuxUpload(videoUrl, entryId) {
       muxPlaybackUrl,
     };
 
-    console.log("📡 Sending database update:", updatePayload);
-
-    const updateResponse = await fetch('/api/gallery/update', {
+    console.log("📡 Sending database update:", {
+      entryId,
+      muxPlaybackId: data.playbackId,
+      muxPlaybackUrl,
+    });
+    
+    await fetch('/api/gallery/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatePayload),
+      body: JSON.stringify({
+        entryId,
+        muxPlaybackId: data.playbackId,
+        muxPlaybackUrl,
+      }),
     });
 
     const updateData = await updateResponse.json();
