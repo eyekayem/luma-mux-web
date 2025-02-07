@@ -285,63 +285,54 @@ export default function Home() {
 
 // Render UI
 // Update the gallery section in the render UI function
+// Modify the work panel section in the render UI function
 return (
   <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
     {/* Title */}
     <h1 className="text-3xl font-bold text-center mb-4">kinoprompt.bklt.ai</h1>
 
     {/* Work Panel */}
-    <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
+    <div className="work-panel w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
       
       {/* Left Side - Inputs */}
       <div className="space-y-4">
-        <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+        <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
           value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)}
           placeholder="First Frame Description"
         />
-        <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+        <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
+        <div className="details">
+          {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg mt-2" />}
+        </div>
+
+        <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
           value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)}
           placeholder="Last Frame Description"
         />
-        <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+        <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
+        <div className="details">
+          {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg mt-2" />}
+        </div>
+
+        <textarea className="input p-3 rounded-lg bg-gray-700 text-white"
           value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)}
           placeholder="Camera Move / Shot Action"
         />
-        <button className="w-full p-3 bg-blue-600 rounded-lg"
+        <button className="carat p-3 bg-blue-600 rounded-lg" onClick={toggleDetails}>▼</button>
+        <div className="details">
+          {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
+        </div>
+
+        <button className="button p-3 bg-blue-600 rounded-lg"
           onClick={startImageGeneration} disabled={isGenerating}>
           {isGenerating ? "Generating..." : "Generate"}
         </button>
       </div>
-
-      {/* Right Side - Output Display (Images & Video) */}
-      <div className="flex flex-col items-center space-y-4">
-        {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg" />}
-        {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
-        {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
-      </div>
-    </div>
-
-    {/* GALLERY SECTION - Displays all past entries */}
-    <div className="gallery">
-      {gallery.map((entry) => (
-        <div key={entry.id} className="gallery-item">
-          <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
-          <p className="text-sm text-gray-400">{entry.video_prompt}</p>
-          <button className="w-full p-3 bg-blue-600 rounded-lg down-carat">▼</button>
-          <div className="hidden">
-            {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
-            <p>{entry.first_image_prompt}</p>
-            {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
-            <p>{entry.last_image_prompt}</p>
-            <button className="w-full p-3 bg-blue-600 rounded-lg">Edit</button>
-          </div>
-        </div>
-      ))}
     </div>
   </div>
 );
 
-// Add this function inside your component to toggle details visibility
+// Add function to toggle details
 function toggleDetails(e) {
   const carat = e.target;
   const details = carat.nextElementSibling;
