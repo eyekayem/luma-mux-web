@@ -1,11 +1,20 @@
-import { useState, useEffect } from "react";
-import VideoPlayer from "../components/VideoPlayer";
+import { useState, useEffect } from 'react';
+import VideoPlayer from '../components/VideoPlayer';
 
 export default function Home() {
+  console.log("🟢 App Loaded: Initializing States...");
+
+  // ✅ Default Work Panel State
+  const defaultWorkPanel = {
+    firstImagePrompt: 'A fashion show for clowns, on the runway. Everyone in the audience is not a clown.',
+    lastImagePrompt: 'Holding a hand mirror up and seeing that you are a clown.',
+    videoPrompt: 'Looking down from the fashion runway while holding a hand mirror up and seeing that you are a clown.',
+  };
+
   // ✅ Work Panel States
-  const [firstImagePrompt, setFirstImagePrompt] = useState("");
-  const [lastImagePrompt, setLastImagePrompt] = useState("");
-  const [videoPrompt, setVideoPrompt] = useState("");
+  const [firstImagePrompt, setFirstImagePrompt] = useState(defaultWorkPanel.firstImagePrompt);
+  const [lastImagePrompt, setLastImagePrompt] = useState(defaultWorkPanel.lastImagePrompt);
+  const [videoPrompt, setVideoPrompt] = useState(defaultWorkPanel.videoPrompt);
   const [firstImageUrl, setFirstImageUrl] = useState(null);
   const [lastImageUrl, setLastImageUrl] = useState(null);
   const [muxPlaybackId, setMuxPlaybackId] = useState(null);
@@ -14,47 +23,50 @@ export default function Home() {
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
 
+  // ✅ Load Work Panel from Database when entryId changes
   useEffect(() => {
-    if (currentEntryId) {
-      fetchWorkPanel();
+    async function fetchWorkPanel() {
+      if (!currentEntryId) return;
+  
+      console.log(`📡 Fetching Work Panel Data for entryId: ${currentEntryId}`);
+      try {
+        const response = await fetch(`/api/status?entryId=${currentEntryId}`);
+        const data = await response.json();
+  
+        setFirstImageUrl(data.firstImageUrl || null);
+        setLastImageUrl(data.lastImageUrl || null);
+        setMuxPlaybackId(data.muxPlaybackId || null);  // ✅ Ensure this field is set
+        setMuxPlaybackUrl(data.muxPlaybackUrl || null);   // ✅ Ensure correct URL is stored
+  
+        console.log("🎥 Mux Playback ID Set:", data.muxPlaybackId);
+        console.log("🎞 Mux Playback URL Set:", data.muxPlaybackUrl);
+  
+      } catch (error) {
+        console.error("❌ Failed to fetch Work Panel data:", error);
+      }
     }
-  }, [currentEntryId]);
+  
+    fetchWorkPanel();
+  }, [currentEntryId]); 
 
+  // ✅ Load Gallery from Database on start
   useEffect(() => {
-    loadGallery();
+    async function fetchGallery() {
+      try {
+        console.log("📡 Fetching shared gallery...");
+        const response = await fetch('/api/gallery');
+        const data = await response.json();
+        setGallery(data.gallery || []);
+      } catch (error) {
+        console.error("❌ Failed to fetch gallery:", error);
+        setGallery([]);
+      }
+    }
+  
+    fetchGallery(); // ✅ Load gallery when the page loads
   }, []);
 
-  // ✅ Load Gallery Entries on Startup
-  async function loadGallery() {
-    console.log("📡 Loading gallery...");
-    try {
-      const response = await fetch("/api/gallery");
-      const data = await response.json();
-      setGallery(data);
-    } catch (error) {
-      console.error("❌ Error loading gallery:", error);
-    }
-  }
 
-  // ✅ Fetch Work Panel Data for Current Entry
-  async function fetchWorkPanel() {
-    console.log("📡 Fetching Work Panel Data for Entry ID:", currentEntryId);
-    try {
-      const response = await fetch(`/api/status?entryId=${currentEntryId}`);
-      const data = await response.json();
-      console.log("📡 Work Panel Response:", data);
-
-      setFirstImageUrl(data.firstImageUrl || null);
-      setLastImageUrl(data.lastImageUrl || null);
-      setMuxPlaybackId(data.muxPlaybackId || null);
-      setMuxPlaybackUrl(data.muxPlaybackUrl || null);
-      if (data.readyForMux) {
-        setIsGenerating(false); // ✅ Reset button when ready
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch Work Panel data:", error);
-    }
-  }
 
   // ✅ Start Image Generation
   async function startImageGeneration() {
@@ -63,13 +75,14 @@ export default function Home() {
     setFirstImageUrl(null);
     setLastImageUrl(null);
 
-    console.log("🚀 Creating new gallery entry or updating existing one...");
+    console.log('🚀 Creating new gallery entry or updating existing one...');
+
     try {
-      const response = await fetch("/api/gallery/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/gallery/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          entryId: 0,
+          entryId: 0,  // ✅ Signals to create a new entry
           firstImagePrompt,
           lastImagePrompt,
           videoPrompt,
@@ -85,7 +98,26 @@ export default function Home() {
 
       console.log("✅ Entry ID assigned:", data.entryId);
       setCurrentEntryId(data.entryId);
-      pollForImages(data.entryId);
+
+      // ✅ Call Luma AI to Generate Images
+      const generateResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId: data.entryId,
+          firstImagePrompt,
+          lastImagePrompt
+        }),
+      });
+
+      const generateData = await generateResponse.json();
+      if (generateData.firstImageJobId && generateData.lastImageJobId) {
+        console.log("✅ Luma AI Generation Started!");
+        pollForImages(data.entryId); // ✅ Start polling for images
+      } else {
+        console.error("❌ Error starting Luma AI generation:", generateData.error);
+        setIsGenerating(false);
+      }
     } catch (error) {
       console.error("❌ Error during image generation:", error);
       setIsGenerating(false);
@@ -94,7 +126,7 @@ export default function Home() {
 
   // ✅ Poll for Image Completion
   async function pollForImages(entryId) {
-    console.log("🔄 Polling for image completion...", { entryId });
+    console.log('🔄 Polling for image completion...', { entryId });
 
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?entryId=${entryId}`);
@@ -134,15 +166,10 @@ export default function Home() {
 
     console.log("📤 Sending video generation request with:", data);
 
-    const videoResponse = await fetch("/api/generate-video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        entryId,
-        firstImageUrl: data.firstImageUrl,
-        lastImageUrl: data.lastImageUrl,
-        videoPrompt,
-      }),
+    const videoResponse = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entryId, firstImageUrl: data.firstImageUrl, lastImageUrl: data.lastImageUrl, videoPrompt }),
     });
 
     const videoData = await videoResponse.json();
@@ -159,7 +186,7 @@ export default function Home() {
 
   // ✅ Poll for Video Completion
   async function pollForVideo(videoJobId, entryId) {
-    console.log("🔄 Polling for video completion...");
+    console.log('🔄 Polling for video completion...');
 
     const pollInterval = setInterval(async () => {
       const response = await fetch(`/api/status?entryId=${entryId}`);
@@ -174,55 +201,114 @@ export default function Home() {
     }, 2000);
   }
 
-  // ✅ Upload Video to Mux & Update Database
-  async function startMuxUpload(videoUrl, entryId) {
-    console.log("🚀 Uploading video to Mux:", videoUrl);
+// ✅ Uploads video to Mux & Updates Database
+// ✅ Uploads video to Mux & Updates Database
+async function startMuxUpload(videoUrl, entryId) {
+  console.log("🚀 Uploading video to Mux:", videoUrl);
 
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoUrl }),
-      });
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoUrl }),
+    });
 
-      const data = await response.json();
-      console.log("📡 Mux Upload Response:", data);
+    const data = await response.json();
+    console.log("📡 Mux Upload Response:", data);
 
-      if (!data.playbackId) {
-        console.error("❌ Mux Upload Failed: No Playback ID Returned");
-        return;
-      }
-
-      const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
-
-      await fetch("/api/gallery/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entryId, muxPlaybackId: data.playbackId, muxPlaybackUrl }),
-      });
-
-      console.log("✅ Database Updated with Mux Playback URL:", muxPlaybackUrl);
-      fetchWorkPanel();
-    } catch (error) {
-      console.error("❌ Error in startMuxUpload:", error);
+    if (!data.playbackId) {
+      console.error("❌ Mux Upload Failed: No Playback ID Returned");
+      setIsGenerating(false); // ✅ Reset button on failure
+      return;
     }
+
+    console.log("✅ Mux Upload Successful, Playback ID:", data.playbackId);
+
+    // ✅ Construct Mux Playback URL
+    const muxPlaybackUrl = `https://stream.mux.com/${data.playbackId}.m3u8`;
+
+    if (!entryId) {
+      console.error("❌ Missing entryId in startMuxUpload, cannot update DB.");
+      setIsGenerating(false); // ✅ Reset button on failure
+      return;
+    }
+
+    // ✅ Ensure correct data before making the request
+    const updatePayload = {
+      entryId,
+      muxPlaybackId: data.playbackId,
+      muxPlaybackUrl,
+    };
+
+    console.log("📡 Sending database update:", updatePayload);
+
+    // ✅ Store the fetch response properly
+    const update = await fetch('/api/gallery/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatePayload),
+    });
+
+    if (!update.ok) {
+      console.error("❌ Database Update Failed:", await update.text());
+      setIsGenerating(false); // ✅ Reset button on failure
+      return;
+    }
+
+    const updateData = await update.json();
+    console.log("✅ Database Updated Successfully:", updateData);
+
+    // ✅ Update Work Panel State
+    setMuxPlaybackId(data.playbackId);
+    setMuxPlaybackUrl(muxPlaybackUrl);
+
+    // ✅ Reset Generating State **AFTER SUCCESS**
+    setIsGenerating(false);
+
+    // ✅ Force Work Panel Refresh After Mux Upload
+    setTimeout(() => {
+      console.log("🔄 Refreshing Work Panel for Entry ID:", entryId);
+      setCurrentEntryId(null);  // Reset
+      setTimeout(() => setCurrentEntryId(entryId), 500); // Restore entry ID after a brief pause
+    }, 1000);
+
+    // ✅ Refresh Gallery
+    fetchGallery();
+
+  } catch (error) {
+    console.error("❌ Error in startMuxUpload:", error);
+    setIsGenerating(false); // ✅ Reset button on failure
   }
+}
 
-  
-  // ✅ Render UI
+}
+
+// ✅ Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
+      
       {/* Title */}
       <h1 className="text-3xl font-bold text-center mb-4">Kinoprompt.bklt.ai</h1>
 
       {/* Work Panel */}
       <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
+        
         {/* Left Side - Inputs */}
         <div className="space-y-4">
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={startImageGeneration} disabled={isGenerating}>
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)}
+            placeholder="First Frame Description"
+          />
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)}
+            placeholder="Last Frame Description"
+          />
+          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white"
+            value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)}
+            placeholder="Camera Move / Shot Action"
+          />
+          <button className="w-full p-3 bg-blue-600 rounded-lg"
+            onClick={startImageGeneration} disabled={isGenerating}>
             {isGenerating ? "Generating..." : "Generate"}
           </button>
         </div>
@@ -233,34 +319,7 @@ export default function Home() {
           {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
           {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
         </div>
-      </div>
-    </div>
-  );
-                                     
-  // ✅ Render UI
-  return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
-      {/* Title */}
-      <h1 className="text-3xl font-bold text-center mb-4">Kinoprompt.bklt.ai</h1>
 
-      {/* Work Panel */}
-      <div className="w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
-        {/* Left Side - Inputs */}
-        <div className="space-y-4">
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={firstImagePrompt} onChange={(e) => setFirstImagePrompt(e.target.value)} placeholder="First Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={lastImagePrompt} onChange={(e) => setLastImagePrompt(e.target.value)} placeholder="Last Frame Description" />
-          <textarea className="w-full p-3 rounded-lg bg-gray-700 text-white" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} placeholder="Camera Move / Shot Action" />
-          <button className="w-full p-3 bg-blue-600 rounded-lg" onClick={startImageGeneration} disabled={isGenerating}>
-            {isGenerating ? "Generating..." : "Generate"}
-          </button>
-        </div>
-
-        {/* Right Side - Output Display (Images & Video) */}
-        <div className="flex flex-col items-center space-y-4">
-          {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg" />}
-          {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
-          {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
-        </div>
       </div>
 
       {/* ✅ GALLERY SECTION - Displays all past entries */}
@@ -281,5 +340,5 @@ export default function Home() {
       </div>
     </div>
   );
-}
-                                    
+} // ✅ Close function correctly
+export default Home;
