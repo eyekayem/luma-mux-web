@@ -18,55 +18,59 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Missing LUMA_API_KEY' });
   }
 
+  async function requestImage(prompt) {
+    const maxRetries = 3;
+    let attempts = 0;
+
+    while (attempts < maxRetries) {
+      try {
+        const response = await fetch(
+          'https://api.lumalabs.ai/dream-machine/v1/generations/image',
+          {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${LUMA_API_KEY}`, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ prompt })
+          }
+        );
+
+        const data = await response.json();
+        console.log("📝 Image Response:", JSON.stringify(data, null, 2));
+        
+        if (data.id) {
+          return data;
+        } else {
+          console.error(`❌ Failed to create image. Luma API Response: ${JSON.stringify(data)}`);
+        }
+
+      } catch (error) {
+        console.error('❌ Error during image generation:', error.message);
+      }
+
+      attempts++;
+      console.log(`🔄 Retry attempt ${attempts} for prompt: ${prompt}`);
+    }
+
+    throw new Error('❌ Max retries reached. Failed to generate image.');
+  }
+
   try {
-    // ✅ Request First Image Generation
+    // Request First Image Generation
     console.log('📸 Requesting First Image...');
-    const firstImageResponse = await fetch(
-      'https://api.lumalabs.ai/dream-machine/v1/generations/image',
-      {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${LUMA_API_KEY}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ prompt: firstImagePrompt })
-      }
-    );
-    
-    const firstImageData = await firstImageResponse.json();
-    console.log("📝 First Image Response:", JSON.stringify(firstImageData, null, 2));
+    const firstImageData = await requestImage(firstImagePrompt);
 
-    if (!firstImageData.id) {
-      throw new Error(`❌ Failed to create first image. Luma API Response: ${JSON.stringify(firstImageData)}`);
-    }
-
-    // ✅ Request Last Image Generation
+    // Request Last Image Generation
     console.log('📸 Requesting Last Image...');
-    const lastImageResponse = await fetch(
-      'https://api.lumalabs.ai/dream-machine/v1/generations/image',
-      {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${LUMA_API_KEY}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ prompt: lastImagePrompt })
-      }
-    );
-
-    const lastImageData = await lastImageResponse.json();
-    console.log("📝 Last Image Response:", JSON.stringify(lastImageData, null, 2));
-
-    if (!lastImageData.id) {
-      throw new Error(`❌ Failed to create last image. Luma API Response: ${JSON.stringify(lastImageData)}`);
-    }
+    const lastImageData = await requestImage(lastImagePrompt);
 
     console.log("✅ Job IDs created:", { 
       firstImageJobId: firstImageData.id, 
       lastImageJobId: lastImageData.id 
     });
 
-    // ✅ Update the database with the job IDs
+    // Update the database with the job IDs
     await sql`
       UPDATE gallery
       SET first_image_job_id = ${firstImageData.id}, last_image_job_id = ${lastImageData.id}
@@ -75,7 +79,7 @@ export default async function handler(req, res) {
 
     console.log(`✅ Stored job IDs in DB for entryId: ${entryId}`);
 
-    // ✅ Return job IDs, polling will happen on the frontend
+    // Return job IDs, polling will happen on the frontend
     res.status(200).json({
       firstImageJobId: firstImageData.id,
       lastImageJobId: lastImageData.id
