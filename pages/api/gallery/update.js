@@ -35,24 +35,27 @@ export default async function handler(req, res) {
     console.log(`🔄 Updating gallery entry ${entryId}...`);
 
     // ✅ Collect only fields that need to be updated
-    const updates = [];
-    if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
-    if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
-    if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
-    if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
-    if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
-    if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
+    const updateFields = {};
+    if (firstImagePrompt) updateFields.first_image_prompt = firstImagePrompt;
+    if (lastImagePrompt) updateFields.last_image_prompt = lastImagePrompt;
+    if (videoPrompt) updateFields.video_prompt = videoPrompt;
+    if (muxPlaybackId) updateFields.mux_playback_id = muxPlaybackId;
+    if (muxPlaybackUrl) updateFields.mux_playback_url = muxPlaybackUrl;
+    if (muxJobId) updateFields.mux_job_id = muxJobId;
 
     // ✅ Ensure there's something to update
-    if (updates.length === 0) {
+    if (Object.keys(updateFields).length === 0) {
       console.warn("⚠️ No valid fields provided for update.");
       return res.status(400).json({ error: "No fields to update" });
     }
 
-    // ✅ Execute the update query dynamically
+    // ✅ Dynamically construct SET statement for SQL update
+    const setClauses = Object.entries(updateFields).map(([key, value]) => sql`${sql.raw(key)} = ${value}`);
+
+    // ✅ Execute the update query
     const result = await sql`
       UPDATE gallery
-      SET ${sql.join(updates, sql`, `)}
+      SET ${sql.raw(setClauses.join(', '))}
       WHERE id = ${entryId}
       RETURNING id;
     `;
