@@ -31,43 +31,40 @@ export default async function handler(req, res) {
       return res.status(200).json({ entryId: result.rows[0].id });
     } 
     
-    else {
-      // 🔄 **Update an existing entry**
-      console.log(`🔄 Updating gallery entry ${entryId}...`);
+    // 🔄 **Update an existing entry**
+    console.log(`🔄 Updating gallery entry ${entryId}...`);
 
-      // ✅ Construct update query dynamically (only update provided fields)
-      let updateFields = {};
-      if (firstImagePrompt) updateFields.first_image_prompt = firstImagePrompt;
-      if (lastImagePrompt) updateFields.last_image_prompt = lastImagePrompt;
-      if (videoPrompt) updateFields.video_prompt = videoPrompt;
-      if (muxPlaybackId) updateFields.mux_playback_id = muxPlaybackId;
-      if (muxPlaybackUrl) updateFields.mux_playback_url = muxPlaybackUrl;
-      if (muxJobId) updateFields.mux_job_id = muxJobId;
+    // ✅ Collect only fields that need to be updated
+    const updates = [];
+    if (firstImagePrompt) updates.push(sql`first_image_prompt = ${firstImagePrompt}`);
+    if (lastImagePrompt) updates.push(sql`last_image_prompt = ${lastImagePrompt}`);
+    if (videoPrompt) updates.push(sql`video_prompt = ${videoPrompt}`);
+    if (muxPlaybackId) updates.push(sql`mux_playback_id = ${muxPlaybackId}`);
+    if (muxPlaybackUrl) updates.push(sql`mux_playback_url = ${muxPlaybackUrl}`);
+    if (muxJobId) updates.push(sql`mux_job_id = ${muxJobId}`);
 
-      // ✅ Ensure there's something to update
-      if (Object.keys(updateFields).length === 0) {
-        console.warn("⚠️ No valid fields provided for update.");
-        return res.status(400).json({ error: "No fields to update" });
-      }
-
-      // ✅ Build the SQL query
-      const query = sql`
-        UPDATE gallery
-        SET ${sql(Object.entries(updateFields).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}))}
-        WHERE id = ${entryId}
-        RETURNING id;
-      `;
-
-      const result = await query;
-
-      if (result.rows.length === 0) {
-        console.error(`❌ No entry found for ID: ${entryId}`);
-        return res.status(404).json({ error: 'Entry not found' });
-      }
-
-      console.log("✅ Gallery entry updated:", result.rows[0].id);
-      return res.status(200).json({ entryId: result.rows[0].id });
+    // ✅ Ensure there's something to update
+    if (updates.length === 0) {
+      console.warn("⚠️ No valid fields provided for update.");
+      return res.status(400).json({ error: "No fields to update" });
     }
+
+    // ✅ Execute the update query dynamically
+    const result = await sql`
+      UPDATE gallery
+      SET ${sql.join(updates, sql`, `)}
+      WHERE id = ${entryId}
+      RETURNING id;
+    `;
+
+    if (result.rows.length === 0) {
+      console.error(`❌ No entry found for ID: ${entryId}`);
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    console.log("✅ Gallery entry updated:", result.rows[0].id);
+    return res.status(200).json({ entryId: result.rows[0].id });
+
   } catch (error) {
     console.error("❌ Error handling gallery entry:", error);
     res.status(500).json({ error: 'Failed to process gallery entry' });
