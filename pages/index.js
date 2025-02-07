@@ -305,10 +305,8 @@ export default function Home() {
   // Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-3xl font-bold text-center mb-4">kinoprompt by bklt</h1>
       <div className="text-center mb-6">
-        <p>Get in touch with <a href="mailto:kenny@bklt.ai" className="underline">kenny@bklt.ai</a></p>
-        <p><a href="https://linktr.ee/bklt.ai" className="underline">linktr.ee/bklt.ai</a></p>
+        <p className="text-3xl font-bold">kinoprompt by bklt.ai - <a href="mailto:kenny@bklt.ai" className="underline">kenny@bklt.ai</a></p>
       </div>
       <div className="work-panel w-full max-w-5xl bg-gray-800 p-6 rounded-lg grid grid-cols-2 gap-4">
         <div className="space-y-4">
