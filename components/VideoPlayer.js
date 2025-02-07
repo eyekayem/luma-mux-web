@@ -3,7 +3,6 @@ import MuxPlayer from "@mux/mux-player-react";
 
 export default function VideoPlayer({ playbackId }) {
   const [isReady, setIsReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (!playbackId) return;
@@ -17,14 +16,6 @@ export default function VideoPlayer({ playbackId }) {
 
     return () => clearTimeout(checkMuxReady);
   }, [playbackId]);
-
-  const handlePlay = () => {
-    const videoElement = document.getElementById(`mux-player-${playbackId}`);
-    if (videoElement) {
-      videoElement.play();
-      setIsPlaying(true);
-    }
-  };
 
   if (!playbackId) return <p>⏳ Waiting for video...</p>;
   if (!isReady) return <p>🔄 Video is preparing...</p>;
@@ -40,19 +31,11 @@ export default function VideoPlayer({ playbackId }) {
         accentColor="#4a02cf"
         streamType="on-demand"
         autoPlay={false}
-        controls={false}
+        controls={true} // Enable default controls
         loop
         muted
         className="w-full h-full"
       />
-      {!isPlaying && (
-        <button
-          onClick={handlePlay}
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-2xl"
-        >
-          ▶
-        </button>
-      )}
     </div>
   );
 }
