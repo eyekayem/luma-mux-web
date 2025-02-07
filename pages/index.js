@@ -31,7 +31,7 @@ export default function Home() {
   async function fetchGallery() {
     try {
       console.log("📡 Fetching shared gallery...");
-      const response = await fetch('/api/gallery?limit=6');
+      const response = await fetch('/api/gallery?limit=6&featured=y');
       const data = await response.json();
       setGallery(data.gallery || []);
     } catch (error) {
