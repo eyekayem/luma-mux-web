@@ -367,6 +367,18 @@ export default function Home() {
         )}
       </div>
 
+      {/* Previously on... Section */}
+      {isGenerating && (
+        <div className="previously-on w-full max-w-5xl mt-6">
+          <h2 className="text-center text-lg font-semibold mb-4">Previously on...</h2>
+          {gallery.map((entry) => (
+            <div key={entry.id} className="gallery-item">
+              <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Gallery Section */}
       <div className="gallery w-full max-w-5xl mt-6">
         {gallery.map((entry) => (
