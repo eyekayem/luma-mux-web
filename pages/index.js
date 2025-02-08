@@ -20,10 +20,10 @@ export default function Home() {
   const [firstImagePrompt, setFirstImagePrompt] = useState(defaultWorkPanel.firstImagePrompt);
   const [lastImagePrompt, setLastImagePrompt] = useState(defaultWorkPanel.lastImagePrompt);
   const [videoPrompt, setVideoPrompt] = useState(defaultWorkPanel.videoPrompt);
-  const [firstImageUrl, setFirstImageUrl] = useState(null);
-  const [lastImageUrl, setLastImageUrl] = useState(null);
-  const [muxPlaybackId, setMuxPlaybackId] = useState(null);
-  const [muxPlaybackUrl, setMuxPlaybackUrl] = useState(null);
+  const [firstImageUrl, setFirstImageUrl] = useState("");
+  const [lastImageUrl, setLastImageUrl] = useState("");
+  const [muxPlaybackId, setMuxPlaybackId] = useState("");
+  const [muxPlaybackUrl, setMuxPlaybackUrl] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [gallery, setGallery] = useState([]);
   const [currentEntryId, setCurrentEntryId] = useState(null);
