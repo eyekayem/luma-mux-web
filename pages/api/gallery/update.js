@@ -22,6 +22,8 @@ export default async function handler(req, res) {
       res.status(500).json({ error: "Failed to fetch gallery" });
     }
   } else if (req.method === 'POST') {
+      console.log('📩 Incoming Data:', req.body); // Add this line to log the incoming data
+
     try {
       console.log("📝 Adding new entry to shared gallery...");
 
