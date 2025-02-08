@@ -1,82 +1,52 @@
-import { sql } from '@vercel/postgres';
+import { Pool } from '@neondatabase/serverless';
 
+// ✅ Initialize PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // 🔥 Ensure this is set in Vercel
+  ssl: true,
+});
+
+// ✅ Handle API requests
 export default async function handler(req, res) {
-  console.log("📝 Incoming Request:", req.body); // ✅ Log request body
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'GET') {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 36; // Default limit to 36
+    try {
+      console.log("📡 Fetching shared gallery from database...");
+      const result = await pool.query(
+        `SELECT * FROM featured_gallery ORDER BY RANDOM() LIMIT $1`, // Randomize the entries
+        [limit]
+      );
+      res.status(200).json({ gallery: result.rows });
+    } catch (error) {
+      console.error("❌ Database Fetch Error:", error);
+      res.status(500).json({ error: "Failed to fetch gallery" });
+    }
   }
 
-  try {
-    // ✅ Extract fields from request body
-    let { entryId, firstImagePrompt, lastImagePrompt, videoPrompt, muxPlaybackId, muxPlaybackUrl, muxJobId } = req.body;
+  else if (req.method === 'POST') {
+    try {
+      console.log("📝 Adding new entry to shared gallery...");
 
-    // ✅ Convert entryId to an integer
-    entryId = parseInt(entryId, 10);
-    if (isNaN(entryId)) {
-      console.error("❌ Invalid entryId:", entryId);
-      return res.status(400).json({ error: "Invalid entryId" });
-    }
-
-    if (entryId === 0) {
-      // 🔥 **Create a new entry**
-      console.log("🆕 Creating new gallery entry...");
-      const result = await sql`
-        INSERT INTO gallery (first_image_prompt, last_image_prompt, video_prompt, first_image_url, last_image_url, mux_playback_id, mux_playback_url, mux_job_id)
-        VALUES (${firstImagePrompt || 'pending'}, ${lastImagePrompt || 'pending'}, ${videoPrompt || 'pending'}, 'pending', 'pending', 'waiting', NULL, NULL)
-        RETURNING id;
-      `;
-
-      console.log("✅ New gallery entry created:", result.rows[0].id);
-      return res.status(200).json({ entryId: result.rows[0].id });
-    }
-
-    // 🔄 **Update an existing entry**
-    console.log(`🔄 Updating gallery entry ${entryId}...`);
-
-    // ✅ Collect only fields that need to be updated
-    const updateFields = [];
-    const updateValues = [];
-
-    const fieldMap = {
-      firstImagePrompt: "first_image_prompt",
-      lastImagePrompt: "last_image_prompt",
-      videoPrompt: "video_prompt",
-      muxPlaybackId: "mux_playback_id",
-      muxPlaybackUrl: "mux_playback_url",
-      muxJobId: "mux_job_id"
-    };
-    
-    Object.entries(req.body).forEach(([key, value]) => {
-      const columnName = fieldMap[key];
-      if (columnName && value !== undefined) {
-        updateFields.push(`${columnName} = $${updateFields.length + 1}`);
-        updateValues.push(value);
+      const { firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId } = req.body;
+      if (!firstImagePrompt || !firstImageUrl || !lastImagePrompt || !lastImageUrl || !videoPrompt || !muxPlaybackId) {
+        return res.status(400).json({ error: "Missing required fields" });
       }
-    });
 
+      const result = await pool.query(
+        `INSERT INTO gallery (first_image_prompt, first_image_url, last_image_prompt, last_image_url, video_prompt, mux_playback_id, featured)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Y') RETURNING *`,
+        [firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId]
+      );
 
-    if (updateFields.length === 0) {
-      console.warn("⚠️ No valid fields provided for update.");
-      return res.status(400).json({ error: "No fields to update" });
+      console.log("✅ New Entry Saved:", result.rows[0]);
+      res.status(200).json({ message: "Gallery updated successfully", entry: result.rows[0] });
+    } catch (error) {
+      console.error("❌ Database Insert Error:", error);
+      res.status(500).json({ error: "Failed to save entry" });
     }
+  }
 
-    updateValues.push(entryId); // Push entryId as the last parameter
-
-    // ✅ Execute SQL Update Query
-    const query = `UPDATE gallery SET ${updateFields.join(', ')} WHERE id = $${updateValues.length} RETURNING id;`;
-    const result = await sql.query(query, updateValues);
-
-    if (result.rows.length === 0) {
-      console.error(`❌ No entry found for ID: ${entryId}`);
-      return res.status(404).json({ error: 'Entry not found' });
-    }
-
-    console.log("✅ Gallery entry updated:", result.rows[0].id);
-    return res.status(200).json({ entryId: result.rows[0].id });
-
-  } catch (error) {
-    console.error("❌ Error handling gallery entry:", error);
-    res.status(500).json({ error: 'Failed to process gallery entry' });
+  else {
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }
