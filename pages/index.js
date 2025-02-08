@@ -313,6 +313,42 @@ export default function Home() {
     setMuxPlaybackUrl(entry.mux_playback_url);
   }
 
+  // Handle text change to create new entryID
+  function handleTextChange(setState, newValue) {
+    setState(newValue);
+    if (!currentEntryId) {
+      createNewEntry();
+    }
+  }
+
+  // Create new entry when text changes
+  async function createNewEntry() {
+    console.log('🚀 Creating new gallery entry...');
+    try {
+      const response = await fetch('/api/gallery/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId: 0,
+          firstImagePrompt,
+          lastImagePrompt,
+          videoPrompt,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.entryId) {
+        console.error("❌ Error creating new gallery entry:", data.error);
+        return;
+      }
+
+      console.log("✅ New Entry ID assigned:", data.entryId);
+      setCurrentEntryId(data.entryId);
+    } catch (error) {
+      console.error("❌ Error creating new gallery entry:", error);
+    }
+  }
+
   // Render UI
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-900 text-white p-6">
@@ -325,7 +361,7 @@ export default function Home() {
             <label className="text-base font-medium text-gray-300">Begin Frame</label>
             <TextAreaAutosize
               value={firstImagePrompt}
-              onChange={(e) => setFirstImagePrompt(e.target.value)}
+              onChange={(e) => handleTextChange(setFirstImagePrompt, e.target.value)}
               placeholder="First Frame Description"
               className="text-base p-2"
             />
@@ -336,7 +372,7 @@ export default function Home() {
             <label className="text-base font-medium text-gray-300">End Frame</label>
             <TextAreaAutosize
               value={lastImagePrompt}
-              onChange={(e) => setLastImagePrompt(e.target.value)}
+              onChange={(e) => handleTextChange(setLastImagePrompt, e.target.value)}
               placeholder="Last Frame Description"
               className="text-base p-2"
             />
@@ -347,7 +383,7 @@ export default function Home() {
             <label className="text-base font-medium text-gray-300">Action and Camera Control</label>
             <TextAreaAutosize
               value={videoPrompt}
-              onChange={(e) => setVideoPrompt(e.target.value)}
+              onChange={(e) => handleTextChange(setVideoPrompt, e.target.value)}
               placeholder="Camera Move / Shot Action"
               className="text-base p-2"
             />
