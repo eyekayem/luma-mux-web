@@ -371,6 +371,7 @@ export default function Home() {
       <div className="gallery w-full max-w-5xl mt-6">
         {gallery.map((entry) => (
           <div key={entry.id} className="gallery-item">
+            <p className="text-sm text-gray-400">{entry.video_prompt.split(" ").slice(0, 5).join(" ")}...</p>
             <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
             <button className="w-full p-3 bg-blue-600 rounded-lg down-carat" onClick={toggleDetails}>▼</button>
             <div className="details hidden">
