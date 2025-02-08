@@ -372,19 +372,22 @@ export default function Home() {
         {gallery.map((entry) => (
           <div key={entry.id} className="gallery-item">
             <div className="hover-reveal">
+              <p className="text-sm text-gray-400">{entry.video_prompt.split(" ").slice(0, 10).join(" ")}...</p>
               <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
               <div className="hover-content">
                 <p className="text-sm text-gray-400">Video Prompt: {entry.video_prompt}</p>
-                <p className="text-sm text-gray-400">Begin Frame: {entry.first_image_prompt}</p>
-                <p className="text-sm text-gray-400">End Frame: {entry.last_image_prompt}</p>
               </div>
             </div>
             <button className="w-full p-3 bg-blue-600 rounded-lg down-carat" onClick={toggleDetails}>▼</button>
             <div className="details hidden">
-              {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
-              <p>{entry.first_image_prompt}</p>
-              {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" />}
-              <p>{entry.last_image_prompt}</p>
+              <div className="field-group">
+                <label className="text-base font-medium text-gray-300">Begin Frame</label>
+                {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" title={entry.first_image_prompt} />}
+              </div>
+              <div className="field-group">
+                <label className="text-base font-medium text-gray-300">End Frame</label>
+                {entry.last_image_url && <img src={entry.last_image_url} alt="Last Image" className="w-full rounded-lg mt-2" title={entry.last_image_prompt} />}
+              </div>
               <button className="button p-2 bg-green-600 rounded-lg" onClick={() => handleTweak(entry)}>Tweak</button>
             </div>
           </div>
