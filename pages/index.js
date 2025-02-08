@@ -86,10 +86,13 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          entryId: 0,
-          firstImagePrompt,
-          lastImagePrompt,
-          videoPrompt,
+        entryId: 0,
+        firstImagePrompt,
+        firstImageUrl, // Add this field
+        lastImagePrompt,
+        lastImageUrl,  // Add this field
+        videoPrompt,
+        muxPlaybackId  // Add this field
         }),
       });
 
