@@ -327,6 +327,14 @@ export default function Home() {
   // Create new entry when text changes
   async function createNewEntry() {
     console.log('🚀 Creating new gallery entry...');
+    console.log('Current State before creating entry:', {
+      firstImagePrompt,
+      firstImageUrl,
+      lastImagePrompt,
+      lastImageUrl,
+      videoPrompt,
+      muxPlaybackId
+  });
     try {
       const response = await fetch('/api/gallery/update', {
         method: 'POST',
