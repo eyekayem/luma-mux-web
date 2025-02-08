@@ -305,8 +305,12 @@ export default function Home() {
   // Function to handle tweak button click
   function handleTweak(entry) {
     setFirstImagePrompt(entry.first_image_prompt);
+    setFirstImageUrl(entry.first_image_url);
     setLastImagePrompt(entry.last_image_prompt);
+    setLastImageUrl(entry.last_image_url);
     setVideoPrompt(entry.video_prompt);
+    setMuxPlaybackId(entry.mux_playback_id);
+    setMuxPlaybackUrl(entry.mux_playback_url);
   }
 
   // Render UI
@@ -367,8 +371,14 @@ export default function Home() {
       <div className="gallery w-full max-w-5xl mt-6">
         {gallery.map((entry) => (
           <div key={entry.id} className="gallery-item">
-            <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
-            <p className="text-sm text-gray-400">{entry.video_prompt}</p>
+            <div className="hover-reveal">
+              <VideoPlayer playbackId={entry.mux_playback_id} className="w-full" />
+              <div className="hover-content">
+                <p className="text-sm text-gray-400">Video Prompt: {entry.video_prompt}</p>
+                <p className="text-sm text-gray-400">Begin Frame: {entry.first_image_prompt}</p>
+                <p className="text-sm text-gray-400">End Frame: {entry.last_image_prompt}</p>
+              </div>
+            </div>
             <button className="w-full p-3 bg-blue-600 rounded-lg down-carat" onClick={toggleDetails}>▼</button>
             <div className="details hidden">
               {entry.first_image_url && <img src={entry.first_image_url} alt="First Image" className="w-full rounded-lg mt-2" />}
