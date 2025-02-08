@@ -324,9 +324,6 @@ export default function Home() {
             placeholder="First Frame Description"
             className="text-base p-2"
           />
-          <div className="details">
-            {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg mt-2" />}
-          </div>
 
           <label className="text-base font-medium text-gray-300">End Frame</label>
           <TextAreaAutosize
@@ -335,9 +332,6 @@ export default function Home() {
             placeholder="Last Frame Description"
             className="text-base p-2"
           />
-          <div className="details">
-            {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg mt-2" />}
-          </div>
 
           <label className="text-base font-medium text-gray-300">Action and Camera Control</label>
           <TextAreaAutosize
@@ -346,13 +340,21 @@ export default function Home() {
             placeholder="Camera Move / Shot Action"
             className="text-base p-2"
           />
-          <div className="details">
-            {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
-          </div>
 
           <button className="button p-3 bg-blue-600 rounded-lg" onClick={startImageGeneration} disabled={isGenerating}>
             {isGenerating ? "Generating..." : "Generate"}
           </button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            {firstImageUrl && <img src={firstImageUrl} alt="First Image" className="w-full rounded-lg" />}
+          </div>
+          <div>
+            {lastImageUrl && <img src={lastImageUrl} alt="Last Image" className="w-full rounded-lg" />}
+          </div>
+          <div>
+            {muxPlaybackUrl && <VideoPlayer playbackId={muxPlaybackId} />}
+          </div>
         </div>
       </div>
 
