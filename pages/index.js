@@ -334,8 +334,11 @@ export default function Home() {
         body: JSON.stringify({
           entryId: 0,
           firstImagePrompt,
+          firstImageUrl, // Ensure this is set
           lastImagePrompt,
+          lastImageUrl,  // Ensure this is set
           videoPrompt,
+          muxPlaybackId  // Ensure this is set
         }),
       });
 
