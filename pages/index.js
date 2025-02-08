@@ -75,9 +75,9 @@ export default function Home() {
   // Start Image Generation
   async function startImageGeneration() {
     setIsGenerating(true);
-    setMuxPlaybackId(null);
-    setFirstImageUrl(null);
-    setLastImageUrl(null);
+    setMuxPlaybackId("");
+    setFirstImageUrl("");
+    setLastImageUrl("");
 
     console.log('🚀 Creating new gallery entry or updating existing one...');
 
