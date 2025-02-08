@@ -28,6 +28,14 @@ export default async function handler(req, res) {
       console.log("📝 Adding new entry to shared gallery...");
 
       const { firstImagePrompt, firstImageUrl, lastImagePrompt, lastImageUrl, videoPrompt, muxPlaybackId } = req.body;
+        console.log("Received data:", {
+          firstImagePrompt,
+          firstImageUrl,
+          lastImagePrompt,
+          lastImageUrl,
+          videoPrompt,
+          muxPlaybackId
+        });
       if (!firstImagePrompt || !firstImageUrl || !lastImagePrompt || !lastImageUrl || !videoPrompt || !muxPlaybackId) {
         return res.status(400).json({ error: "Missing required fields" });
       }
